@@ -1,0 +1,569 @@
+---
+title: "Lupus App 2.0,
+        Building accessible resources to empower communities: 
+        the case of the Lupus Mexican Registry"
+author: "Dris Sánchez, 
+         Anita Ledesma,
+         Grecia Sevilla,
+         Fernanda Bravo,  
+         Itzel Olivares,
+         Domingo Martínez"
+toc: true # Activate table of contents
+toc-depth: 3 # Table of contents depth
+toc-expand: true # Show table expanded at the beginning
+toc-location: left-body # Table of contents location
+number-sections: true # Number headings in the render
+number-depth: 3 # Number headings up to level 3
+toc-title: "Contents" # Custom TOC title
+theme: flatly # Theme
+fontsize: 100% # Base font size
+# fontcolor: grey # Optional text color
+highlight-style: pygments
+format:
+  html:
+    embed-resources: true
+    code-fold: true
+    html-math-method: katex
+  pdf:
+    geometry:
+      - top=30mm
+      - left=30mm
+  docx: default
+editor:
+  markdown:
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+# Packages used in the project
+required_packages <- c(
+  "tidyverse",
+  "shiny",
+  "bslib"
+  )
+
+# Feature for automatically installing and downloading packages
+load_or_install <- function(packages) {
+  for (pkg in packages) {
+    if (!require(pkg, character.only = TRUE)) {
+      install.packages(pkg, dependencies = TRUE)
+      library(pkg, character.only = TRUE)
+    }
+  }
+}
+
+load_or_install(required_packages)
+```
+
+## Development Guides
+
+### General Guidelines
+
+- All interface elements and outputs must be presented in Spanish.
+
+- Outputs shown to users should be written in clear, easy-to-interpret text. In other words, prioritize human-readable explanations over technical descriptions.
+
+- Prefer simple, readable, and reproducible code over unnecessarily complex solutions.
+
+- At this stage, the priority is a functional application. Visual and aesthetic improvements will be implemented in future versions.
+
+- All variable handling must occur within the local environment. Data curation and manipulation should be performed in this script immediately before each module or section.
+
+- **Important:** Variable names must remain unchanged (immutable). However, they should be translated into human-readable Spanish concepts when presented outputs to users. 
+
+- The use of the tidyverse ecosystem is preferred (functions, data manipulation, naming conventions, data structures, etc.).
+
+### Additional Recommendations
+
+#### Code Structure and Organization
+
+- Remember the app is divided into logical modules. Pre-processing need to be dveloped in "Procesamiento de datos", your code inside the "Pestaña n".
+- Use consistent naming conventions for objects and functions.
+- Keep functions short and focused on a single task.
+- Avoid code duplication; reuse functions whenever possible.
+
+#### Reproducibility
+
+- Ensure the script can run from start to finish without manual intervention.
+- Set a seed when using random processes (`set.seed()`).
+- Clearly state package dependencies (e.g., using `renv`, `DESCRIPTION`, or a requirements section in the README).
+
+#### Collaboration and Version Control
+
+- Document major decisions or assumptions within the code (comments).
+- Keep code clean and remove unused variables or commented-out blocks before committing.
+
+#### Documentation
+
+- Comment code where necessary, especially in complex sections.
+- Provide brief descriptions for your section in "Explanation Pestaña n"
+
+#### Data Handling and Validation
+
+- Validate inputs and handle missing or inconsistent data explicitly.
+- Include basic error handling to prevent app crashes.
+- Clearly define how missing values (`NA`) are treated.
+
+#### User Experience (UX)
+
+- Ensure outputs are intuitive and informative, even for non-technical users.
+- Avoid overloading the interface with too much information at once.
+- Use progressive disclosure: show detailed results only when needed.
+
+#### Performance
+
+- Avoid unnecessary recalculations inside reactive contexts.
+- Use reactive expressions efficiently in Shiny.
+- Optimize data manipulation steps.
+
+### Optional (Highly Recommended)
+
+- Follow a consistent style guide (e.g., tidyverse style guide).
+
+
+## Explanation 
+
+### Explanation Pestaña 1
+
+### Explanation Pestaña 2
+
+### Explanation Pestaña 3
+
+### Explanation Pestaña 4
+
+## Loading dataset
+
+```{r}
+#| label: Load dataset
+
+path = "Lupus_App_dataset.csv"
+
+load_lupus_data <- function(path) {
+  raw_data <- read_csv(path, show_col_types = FALSE)
+  
+  curated_data <- raw_data %>%
+    mutate(
+      across(
+        where(is.character),
+        ~ na_if(., "")
+      )
+    )
+  
+  return(curated_data)
+}
+
+lupus_data <- load_lupus_data(path)
+```
+
+## Formating dataset
+
+```{r}
+#| label: Formating dataset
+
+formated_lupus_data <- lupus_data %>% 
+  mutate(
+    Disease.activity.classification = factor(
+      Disease.activity.classification,
+      levels = c(
+        "No activity",
+        "Mild activity",
+        "Moderate activity",
+        "High activity",
+        "Very high activity"
+      ),
+      
+      # Aplicamos la traducción directa al español
+      labels = c(
+        "Sin actividad", 
+        "Leve", 
+        "Moderada", 
+        "Alta", 
+        "Muy alta"
+      ),
+      
+      ordered = TRUE
+    ),
+    
+    
+    clasi_ali = suppressWarnings(as.numeric(clasi_ali)),
+    
+    clasi_ali_es = factor(
+      clasi_ali,
+      levels = c(1, 2, 3),
+      labels = c(
+        "Hábitos inadecuados",
+        "Hábitos parcialmente inadecuados",
+        "Hábitos adecuados"
+      ),
+      ordered = TRUE
+    ),
+    
+    comorbidities = factor(
+      suppressWarnings(as.numeric(comorbidities)),
+      levels = c(1,2,3,4,5,6,7,8,9,11),
+      labels = c(
+        "Diabetes mellitus",
+        "Hipertensión",
+        "Cáncer",
+        "Enfermedad cardiovascular",
+        "Osteoporosis",
+        "Artritis reumatoide",
+        "Esclerosis múltiple",
+        "Problemas de tiroides",
+        "Otra",
+        "Ninguna"
+      )
+    ),
+    
+    home = factor(
+      suppressWarnings(as.numeric(home)),
+      levels = 1:32,
+      labels = c(
+        "Aguascalientes",
+        "Baja California",
+        "Baja California Sur",
+        "Campeche",
+        "Coahuila de Zaragoza",
+        "Colima",
+        "Chiapas",
+        "Chihuahua",
+        "Durango",
+        "Ciudad de México",
+        "Guanajuato",
+        "Guerrero",
+        "Hidalgo",
+        "Jalisco",
+        "México",
+        "Michoacán de Ocampo",
+        "Morelos",
+        "Nayarit",
+        "Nuevo León",
+        "Oaxaca",
+        "Puebla",
+        "Querétaro",
+        "Quintana Roo",
+        "San Luis Potosí",
+        "Sinaloa",
+        "Sonora",
+        "Tabasco",
+        "Tamaulipas",
+        "Tlaxcala",
+        "Veracruz de Ignacio de la Llave",
+        "Yucatán",
+        "Zacatecas"
+      )
+    ),
+    
+    place_of_birth = factor(
+      suppressWarnings(as.numeric(place_of_birth)),
+      levels = 1:32,
+      labels = c(
+        "Aguascalientes",
+        "Baja California",
+        "Baja California Sur",
+        "Campeche",
+        "Coahuila de Zaragoza",
+        "Colima",
+        "Chiapas",
+        "Chihuahua",
+        "Durango",
+        "Ciudad de México",
+        "Guanajuato",
+        "Guerrero",
+        "Hidalgo",
+        "Jalisco",
+        "México",
+        "Michoacán de Ocampo",
+        "Morelos",
+        "Nayarit",
+        "Nuevo León",
+        "Oaxaca",
+        "Puebla",
+        "Querétaro",
+        "Quintana Roo",
+        "San Luis Potosí",
+        "Sinaloa",
+        "Sonora",
+        "Tabasco",
+        "Tamaulipas",
+        "Tlaxcala",
+        "Veracruz de Ignacio de la Llave",
+        "Yucatán",
+        "Zacatecas"
+      )
+    ),
+    
+    school = factor(
+      suppressWarnings(as.numeric(school)),
+      levels = c(1, 2, 3, 4, 5, 6),
+      labels = c(
+        "Ninguno",
+        "Primaria",
+        "Secundaria",
+        "Preparatoria/Carrera técnica",
+        "Licenciatura",
+        "Posgrado"
+      )
+    ),
+    
+    ocupation = factor(
+      suppressWarnings(as.numeric(ocupation)),
+      levels = c(1, 2, 3, 4),
+      labels = c(
+        "Estudiante",
+        "Empleado",
+        "Desempleado",
+        "Jubilado/Retirado"
+      )
+    ),
+    
+    aditional_treatment = factor(
+      suppressWarnings(as.numeric(aditional_treatment)),
+      levels = c(1, 2),
+      labels = c("Sí", "No")
+    ),
+    family_sle = factor(
+  suppressWarnings(as.numeric(family_sle)),
+  levels = c(0, 1),
+  labels = c("Sí", "No")
+    ),
+  sex___1 = factor(
+  suppressWarnings(as.numeric(sex___1)),
+  levels = c(1, 0),
+  labels = c("Mujer", "Hombre")
+  ),
+  prednisolona = factor(
+  suppressWarnings(as.numeric(prednisolona)),
+  levels = c(0,1,2,3,4,5,6,7,8),
+  labels = c(
+    "Prednisona",
+    "Prednisolona",
+    "Deflazacort",
+    "Meticorten",
+    "Metilprednisolona",
+    "Calcort",
+    "Betametazona",
+    "No",
+    "Otro"
+  )
+),
+
+uses_corticosteroids = prednisolona != "No"
+  )
+
+treatment_labels <- c(
+  "Antimaláricos",
+  "Corticoesteroides",
+  "Ácido micofenólico",
+  "Azatioprina",
+  "Metotrexato",
+  "Rituximab",
+  "Ciclosporina",
+  "Ciclofosfamida",
+  "Otros"
+)
+
+formated_lupus_data <- formated_lupus_data %>% 
+  rowwise() %>% 
+  mutate(
+    treatment_summary = paste(
+      treatment_labels[
+        c_across(starts_with("treatment___")) == 1
+      ],
+      collapse = ", "
+    ),
+    
+    treatment_summary = ifelse(
+      treatment_summary == "",
+      "Ninguno",
+      treatment_summary
+    ),
+    
+    num_treatments = sum(c_across(starts_with("treatment___"))),
+    
+    any_treatment = num_treatments > 0
+  ) %>% 
+  ungroup()
+
+family_labels <- c(
+  "Papá","Mamá","Herman@s","Abuel@",
+  "Tí@","Prim@","Sobrin@","Hij@","Otro"
+)
+
+formated_lupus_data <- formated_lupus_data %>% 
+  rowwise() %>% 
+  mutate(
+    # resumen de familiares con lupus
+    family_member_sle_summary = if (family_sle == "Sí") {
+      vals <- family_labels[
+        c_across(starts_with("family_member_sle___")) == 1
+      ]
+      if (length(vals) == 0) "No especificado" else paste(vals, collapse = ", ")
+    } else {
+      NA_character_
+    },
+    
+    # número de familiares
+    num_family_members_sle = if (family_sle == "Sí") {
+      sum(c_across(starts_with("family_member_sle___")))
+    } else {
+      NA_real_
+    },
+    
+    # familiares de primer grado
+    has_first_degree_sle = if (family_sle == "Sí") {
+      sum(c_across(c(
+        family_member_sle___0,
+        family_member_sle___1,
+        family_member_sle___2,
+        family_member_sle___7
+      ))) > 0
+    } else {
+      NA
+    }
+  ) %>% 
+  ungroup()
+
+
+formated_lupus_data <- formated_lupus_data %>% 
+  mutate(
+    # tratamiento total REAL (incluye corticoide)
+    total_treatments = num_treatments + ifelse(uses_corticosteroids, 1, 0),
+    
+    treatment_profile = case_when(
+      
+      total_treatments == 0 ~ "Sin tratamiento",
+      
+      total_treatments == 1 & uses_corticosteroids ~ 
+        paste0("Monoterapia: Corticoide (", prednisolona, ")"),
+      
+      total_treatments == 1 ~ 
+        paste0("Monoterapia: ", treatment_summary),
+      
+      total_treatments > 1 ~ 
+        paste0(
+          "Politerapia: ",
+          ifelse(
+            treatment_summary == "Ninguno",
+            paste0("Corticoide (", prednisolona, ")"),
+            paste0(
+              treatment_summary,
+              ifelse(
+                uses_corticosteroids,
+                paste0(", Corticoide (", prednisolona, ")"),
+                ""
+              )
+            )
+          )
+        )
+    )
+  )
+
+glimpse(formated_lupus_data)
+```
+
+
+## Shiny App
+
+```{r}
+#| label: Lupus App
+
+# Procesamiento de datos
+
+# Interfaz de Usuario (UI)
+ui <- page_navbar(
+  title = "LupusRGMX Data App",
+  theme = bs_theme(version = 5, bootswatch = "flatly"),
+  
+  # Pestaña 1: Reporte General
+  nav_panel(title = "Reporte General",
+            sidebarLayout(
+              sidebarPanel(
+                h4("Filtros Generales"),
+                # Aquí irán los selectInput para Edad, Sexo, SLEDAI, etc.
+                selectInput("var_gen", "Selecciona variables:", choices = c("Edad", "Sexo", "Comorbilidades"), multiple = TRUE),
+                actionButton("run_gen", "Generar Reporte", class = "btn-primary")
+              ),
+              mainPanel(
+                h3("Resumen Descriptivo"),
+                textOutput("txt_reporte_gen") # Salida de texto reactiva
+              )
+            )
+  ),
+  
+  # Pestaña 2: Modelado Estadístico
+  nav_panel(title = "Modelado Estadístico",
+            sidebarLayout(
+              sidebarPanel(
+                h4("Configuración del Modelo"),
+                selectInput("var_target", "Variable Objetivo (Target):", choices = c("SLEDAI", "Calidad de Vida", "Nefritis Lúpica")),
+                selectInput("var_predict", "Variables Predictoras (Features):", choices = c("Uso de Corticoesteroides", "Tiempo de diagnóstico"), multiple = TRUE),
+                radioButtons("modelo_tipo", "Tipo de Modelo:", choices = c("Regresión Lineal", "Regresión Binomial", "Chi-cuadrada")),
+                actionButton("run_model", "Ejecutar Modelo", class = "btn-primary")
+              ),
+              mainPanel(
+                h3("Resultados del Modelo"),
+                textOutput("txt_reporte_modelo") # Salida de texto reactiva
+              )
+            )
+  ),
+  
+  # Pestaña 3: Neurolupus
+  nav_panel(title = "Neurolupus",
+            sidebarLayout(
+              sidebarPanel(
+                h4("Filtros Neurológicos"),
+                selectInput("var_neuro", "Variables de Interés:", choices = c("Lesiones Tractos", "Eventos Cerebrovasculares", "Puntaje MoCA"), multiple = TRUE),
+                actionButton("run_neuro", "Generar Reporte", class = "btn-primary")
+              ),
+              mainPanel(
+                h3("Reporte Neurocognitivo y de Imagen"),
+                textOutput("txt_reporte_neuro") # Salida de texto reactiva
+              )
+            )
+  ),
+  
+  # Pestaña 4: Acceso a Datos
+  nav_panel(title = "Acceso a Datos Crudos",
+            div(class = "container mt-5",
+                h2("Solicitud de Datos"),
+                p("Los datos crudos de este estudio se encuentran resguardados para proteger la privacidad de las y los participantes."),
+                p("Si eres investigador y deseas acceder a la base de datos para análisis colaborativos, por favor completa el formulario de solicitud formal."),
+                br(),
+                a(href = "URL_DE_TU_REDCAP", target = "_blank", class = "btn btn-lg btn-success", "Ir al Formulario en RedCap")
+            )
+  )
+)
+
+# Lógica del Servidor (Server)
+server <- function(input, output, session) {
+  
+  # Lógica Pestaña 1
+  observeEvent(input$run_gen, {
+    output$txt_reporte_gen <- renderText({
+      paste("Reporte generado para las variables:", paste(input$var_gen, collapse = ", "), 
+            ". Aquí se insertará la lógica para calcular y redactar promedios, conteos, etc.")
+    })
+  })
+  
+  # Lógica Pestaña 2
+  observeEvent(input$run_model, {
+    output$txt_reporte_modelo <- renderText({
+      paste("Ejecutando", input$modelo_tipo, "para predecir", input$var_target, 
+            "utilizando", paste(input$var_predict, collapse = ", "), 
+            ". Aquí se interpretarán los coeficientes y el p-value en formato texto.")
+    })
+  })
+  
+  # Lógica Pestaña 3
+  observeEvent(input$run_neuro, {
+    output$txt_reporte_neuro <- renderText({
+      paste("Reporte de Neurolupus generado para:", paste(input$var_neuro, collapse = ", "),
+            ". Aquí se describirán las asociaciones entre los puntajes clínicos y los hallazgos de resonancia.")
+    })
+  })
+}
+
+shinyApp(ui, server)
+
+```
