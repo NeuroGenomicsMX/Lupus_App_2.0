@@ -1,0 +1,735 @@
+---
+title: "Lupus App 2.0"
+author: "Itzel Olivares"
+toc: true # Activate table of contents
+toc-depth: 3 # Table of contents depth
+toc-expand: true # Show table expanded at the beginning
+toc-location: left-body # Table of contents location
+number-sections: true # Number headings in the render
+number-depth: 3 # Number headings up to level 3
+toc-title: "Contents" # Custom TOC title
+theme: flatly # Theme
+fontsize: 100% # Base font size
+# fontcolor: grey # Optional text color
+highlight-style: pygments
+format:
+  html:
+    embed-resources: true
+    code-fold: true
+    html-math-method: katex
+  pdf:
+    geometry:
+      - top=30mm
+      - left=30mm
+  docx: default
+editor:
+  markdown:
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+# Packages used in the project
+required_packages <- c(
+  "tidyverse",
+  "visdat",
+  "janitor",
+  "skimr",
+  "readr",
+  "lubridate",
+  "stringr",
+  "knitr",
+  "kableExtra")
+
+# Feature for automatically installing and downloading packages
+load_or_install <- function(packages) {
+  for (pkg in packages) {
+    if (!require(pkg, character.only = TRUE)) {
+      install.packages(pkg, dependencies = TRUE)
+      library(pkg, character.only = TRUE)
+    }
+  }
+}
+
+load_or_install(required_packages)
+
+```
+
+# Initial Workflow
+
+1.  Write an introduction for the Mexican Lupus Registry App
+
+2.  Describe study population
+
+3.  Start the curation process as follows:
+
+    1.  Preserve the original REDCap variable names to ensure
+        consistency and traceability across all stages of the project.
+
+    2.  Maintain the participant identifier (record_id) unchanged to
+        allow accurate data linkage.
+
+    3.  Select variables based on expert consensus derived from the
+        Delphi process.
+
+    4.  Create a curated dataset that includes only the selected
+        variables.
+
+4.  Evaluate missing data patterns using visualization techniques,
+    without excluding subjects or variables.
+
+5.  Prepare the dataset for downstream descriptive analysis, plotting, and statistical modeling.
+
+6.  In a second stage, integrate the Neurolupus dataset—containing MRI findings, VolBrain metrics, and cognitive assessments (MoCA)—using the same participant identifier.
+
+# Introduction
+
+::: {style="text-align: justify;"}
+This document presents the set of variables selected for the project
+“Building Accessible Resources to Empower Communities: The Case of the Mexican Lupus Registry.” The project aims to develop an interactive application that enables users to explore data from the Mexican Lupus Registry, generate descriptive statistical reports, and build predictive models based on user-defined combinations of variables.
+
+The selection of these variables is designed to balance clinical
+relevance, data availability, and analytic utility, ensuring that the application supports both research and patient-centered insights.
+:::
+
+# Methods
+
+## Study Population and Data Source
+
+::: {style="text-align: justify;"}
+We analyzed data from the LupusRGMX cohort <https://www.frontiersin.org/journals/digital-health/articles/10.3389/fdgth.2024.1344103/full>, an electronic registry of Mexican patients with Systemic Lupus Erythematosus (SLE) <https://doi.org/10.1371/journal.pdig.0000706>. For this analysis, we included patients aged 18 years or older with a confirmed diagnosis of SLE. Data curation involved the removal of duplicate records and the exclusion of variables with 100% missing values.
+:::
+
+## Variable selection process
+
+::: {style="text-align: justify;"}
+A committee of six experts in the LupusRGMX dataset cohort was formed, and they carried out the variable selection process using a consensus-based approach.
+
+1.  The experts independently reviewed the complete list of variables and selected 20 variables, providing justification for their selection.
+
+2.  A list was created in which the variables were ranked from highest to lowest concordance, based on each expert’s selection.
+
+3.  A meeting was held to discuss each variable on the list, and a vote was taken to determine whether the variable in question would be retained or eliminated
+
+4.  Variables that were clinically relevant and aligned with the intended use of the application were retained, as were those useful for the planned analytic and reporting modules.
+
+Once selected, they were grouped into: 
+
+- Clinical variables 
+- Sociodemographic variables 
+- PROMs (Patient - Reported Outcomes) 
+- Lifestyle and quality of life 
+- Neurolupus
+
+The final curated dataset must retain the original names of the RedCap variables, keep the participant identifier intact, and avoid removing subjects or variables during the curation stage.
+:::
+
+## Selected Variables and Coding
+
+::: {style="text-align: justify;"}
+All variables were preserved using their original REDCap names to ensure traceability and reproducibility. Variables were classified according to their data type as continuous, binary, or categorical (nominal or ordinal), and coding schemes were maintained according to the original data dictionary.
+:::
+
+::: {style="text-align: justify;"}
+Selected variables were organized into clinically meaningful domains, including demographic characteristics, disease activity and organ involvement, treatment, reproductive health, lifestyle factors, and patient-reported outcomes. Coding schemes were maintained according to the original REDCap data dictionary. *(Add reference to dictionary if possible)*
+:::
+
+### Demographic and Socioeconomic Variables
+
+::: {style="text-align: justify;"}
+Demographic variables included:
+
+- participant identification (`record_id`)
+- sex (coded as binary checkbox variables `sex___1==1` for female and `sex___1==0` for male), and 
+- age (`calculated_age`, continuous).
+
+Geographic variables such as place of birth (`place_of_birth`) and
+current residence (`home`) were coded according to the 32 federal
+entities of Mexico published by INEGI.
+
+Educational attainment (`school`) and occupation (`ocupation`) were
+coded as ordinal categorical variables reflecting increasing levels of
+education and employment status. 
+
+Specifically, `ocupation` was coded as
+1 = Student
+2 = Employed
+3 = Unemployed
+4 = Retired. 
+
+The variable `school` was coded as 
+1 = None
+2 = Primary education
+3 = Secondary education
+4 = High school or technical degree
+5 = Bachelor’s degree
+6 = Postgraduate education.
+
+Socioeconomic status (`socioeconomic_status`) was included as a
+composite index following  the rule (NSE 2022) of the Mexican Association of Market and Opinion Intelligence Agencies (AMAI) <https://www.amai.org/NSE/index.php?queVeo=NSE2020>.
+
+:::
+
+### Lifestyle: Dietary pattern and exercise
+
+::: {style="text-align: justify;"}
+Dietary behavior was assessed using the Eating Behavior Questionnaire,
+incorporating both a total score (`puntuacion_alimentacion`) and a
+categorical classification (`clasi_ali`). The total score reflects
+overall eating patterns and was used to classify dietary habits into
+three categories.
+
+- A score of 3 corresponds to adequate dietary habits, indicating balanced
+eating patterns, appropriate distribution of food groups, and regular
+meal timing, including breakfast, lunch, dinner, and snacks. This
+category reflects individuals who maintain a structured and balanced
+diet, which is associated with better overall health and daily
+functioning.
+
+- A score of 2 indicates partially inadequate dietary habits, reflecting
+mild imbalances in food intake or meal timing. These individuals may
+exhibit inconsistencies in dietary patterns, such as irregular meals or
+unbalanced consumption across food groups, which may impact nutritional
+quality.
+
+- A score of 1 corresponds to inadequate dietary habits, indicating a lack
+of balance in food intake, including excessive consumption of sugars,
+saturated fats, or salt, as well as irregular or poorly structured meal
+patterns. This category reflects dietary behaviors that may negatively
+impact health and increase the risk of disease.
+
+Overall, higher scores are indicative of healthier and more balanced
+dietary patterns.
+
+Physical activity was assessed using the International Physical Activity
+Questionnaire (IPAQ), with total physical activity summarized through
+the variable `metstotal`, representing the overall metabolic equivalent
+task (MET) score. This variable was treated as a continuous measure of
+energy expenditure.
+
+Additionally, `metstotal` was interpreted using standardized thresholds:
+
+- values below 600 MET-minutes/week were classified as low physical activity, indicating insufficient intensity or duration to meet moderat or high activity criteria. 
+
+- Scores equal to or greater than 600 MET-minutes/week were considered indicative of moderate physical activity, defined by patterns such as at least 3 days of vigorous activity for a minimum of 20 minutes per day, 5 days of moderate
+activity and/or walking for at least 30 minutes per day, or equivalent
+combinations. 
+
+- Scores exceeding 1500 MET-minutes/week were classified as high physical activity, corresponding to sustained engagement in moderate and/or vigorous activities across most days of the week.
+:::
+
+### Clinical Variables
+
+::: {style="text-align: justify;"}
+Family history of lupus was assessed using:
+
+- `family_sle`, coded as 0 = No and 1 = Yes
+
+Aand further detailed through checkbox variables identifying
+affected relatives (`family_member_sle___0` to `family_member_sle___8`),
+each coded as a binary indicator (1 = Yes, 0 = No). These variables
+correspond to specific family members as follows:
+
+- `family_member_sle___0` = Father
+- `family_member_sle___1` = Mother
+- `family_member_sle___2` = Siblings
+- `family_member_sle___3` = Grandparent
+- `family_member_sle___4` = Aunt/Uncle
+- `family_member_sle___5` = Cousin
+- `family_member_sle___6` = Niece/Nephew
+- `family_member_sle___7` = Child
+- `family_member_sle___8` = Other
+
+Temporal variables included age at diagnosis (`dx_age`) and time since diagnosis (`dx_time`), both treated as continuous variables ranging from 0 to 99 years. 
+
+Time from symptom onset to diagnosis (`time_symptoms`) was captured as an ordinal categorical variable reflecting increasing duration intervals, coded as follows: 
+
+0 = less than 6 months
+1 = between 6 months and 1 year
+2 = 1 year
+3 = 2 years
+4 = 3 years
+5 = 4 years
+6 = more than 5 years
+7 = more than 10 years
+
+Anthropometric measurements included weight (`weight`), height (`height`), body mass index (`bmi`), waist circumference (`waist`), and hip circumference (`hips`), all treated as continuous variables.
+
+Comorbidities were captured using the variable `comorbidities`, which
+includes predefined categories coded as follows: 
+
+1 = Diabetes mellitus
+2 = Hypertension 
+3 = Cancer
+4 = Cardiovascular disease
+5 = Osteoporosis
+6 = Rheumatoid arthritis
+7 = Multiple sclerosis
+8 = Thyroid disorders
+9 = Other
+11 = None
+
+This variable allows the identification of coexisting conditions relevant to disease burden and clinical outcomes.
+
+Cardiovascular risk was evaluated using derived indicators such as
+estimated cardiovascular risk (`ht_cvd_risk`) and heart age
+(`ht_heart_age`), both treated as continuous variables.
+
+Clinical characterization included measures of disease activity and
+cumulative damage, such as the total SLEDAI score (`total sledai`) and
+the SLICC damage index (`total slicc`), both of which were treated as
+continuous variables. The disease activity classification
+(`Disease Activity Classification`) was included as a categorical
+variable, with a score of \>6 indicating active disease.
+
+Organ involvement was represented by the domains included in the SLICC
+damage index. These included 
+
+renal (`Renal`)
+cardiovascular (`Cardiovascular`)
+pulmonary (`Pulmonary`)
+gastrointestinal (`Gastrointestinal`)
+musculoskeletal (`Musculoskeletal`)
+neuropsychiatric (`Neuropsychiatric`)
+peripheral vascular (`Peripheral vascular`)
+cutaneous (`Skin`)
+ocular (`Ocular`)
+cardiomyopathy (`Cardiomyopathy`)
+diabetes (`Diabetes`)
+malignancy (`Malignancy`). 
+
+These variables were coded as binary indicators (1 =
+present, 0 = absent).
+:::
+
+### Treatment Variables
+
+::: {style="text-align: justify;"}
+Pharmacological treatment variables included corticosteroid use
+(`prednisolona`), coded according to the specific drug type as follows:
+
+0 = Prednisone
+1 = Prednisolone
+2 = Deflazacort
+3 = Meticorten
+4 = Methylprednisolone
+5 = Calcort
+6 = Betamethasone
+7 = No corticosteroid use
+8 = Other. 
+
+Dosage was captured using
+`pred_dosis`, measured in milligrams (mg), and further categorized using
+`pred_dosis_categ` into low and high dose groups.
+
+Immunosuppressive and adjunct therapies were represented using checkbox
+variables (`treatment_0` to `treatment_8`), where each category
+corresponds to a specific medication class and is coded as a binary
+indicator (1 = Yes, 0 = No). 
+
+These categories include: 
+`treatment_0` = Antimalarials (hydroxychloroquine, chloroquine)
+`treatment_1` = Corticosteroids (prednisone, prednisolone, deflazacort, meticorten, methylprednisolone, calcort, betamethasone), `treatment_2` =
+Mycophenolic acid (mycophenolate)
+`treatment_3` = Azathioprine
+`treatment_4` = Methotrexate 
+`treatment_5` = Rituximab
+`treatment_6` = Cyclosporine
+`treatment_7` = Cyclophosphamide
+`treatment_8` = Other treatments.
+
+Additional treatment information was captured through
+`aditional_treatment`, coded as a binary variable (1 = Yes, 2 = No),
+allowing further characterization of therapeutic regimens.
+:::
+
+### Reproductive Health Variables
+
+::: {style="text-align: justify;"}
+Reproductive history variables included current pregnancy status
+(`pregnant`), coded as 1 = Yes and 0 = No, as well as pregnancy planning
+(`pregnancy_plan`), defined as intention to conceive in the near future
+(1 = Yes, 0 = No). 
+
+Previous pregnancy history was captured through
+`pregnancies` (1 = Yes, 0 = No)
+`pregnancies_number` (total number of pregnancies, ranging from 1 to 5)
+`pregnancies_2`, indicating alloimmunization status (1 = Yes, 0 = No).
+
+Detailed obstetric history was assessed using grouped variables
+describing pregnancy outcomes (`pregn_end`, `pregn_end_2`,
+`pregn_end_3`, `pregn_end_4`), coded as 0 = Term, 1 = Preterm, and 2 =
+Miscarriage. 
+
+Pregnancy complications were captured using `pregn_compl`
+and related variables, where 0 = Preeclampsia, 1 = Eclampsia, and 2 =
+HELLP syndrome. 
+
+Timing of complications (`pregn_compl_time` and related
+variables) was recorded according to gestational month, ranging from 1
+(first month) to 9 (ninth month). 
+
+Preeclampsia history (`preeclampsie` and related variables) was evaluated for each pregnancy and coded as 0 = No, 1 = Yes, and 2 = Unknown.
+
+Lifestyle factors during each pregnancy included smoking status
+(`smoking`), coded as 1 = Yes and 0 = No. 
+Breastfeeding history was captured using `breastfeeding` (0 = No, 1 = Yes) and `breasfeeding_type` variables, specifying type per pregnancy as 1 = Exclusive, 2 = Partial, and 3 = None or not applicable.
+
+Menstrual and gynecological history variables included age at menarche
+(`period_age`, in years), presence of menstruation in the past 12 months
+(`last_period)`, 0 = No, 1 = Yes, and age at last menstruation
+(`last_period_age`, in years). Cycle regularity (`cycle_regularity`) was
+coded as 0 = No and 1 = Yes. Surgical history included hysterectomy
+(`histerectomy`) and oophorectomy (`ooforectomy`), both coded as 0 = No
+and 1 = Yes, with `ooforectomy_ovaries` specifying the number of ovaries
+removed (1 = one ovary, 2 = both ovaries, 3 = unknown).
+
+Contraceptive use was evaluated through current use (`contraceptives`, 1
+= Yes, 0 = No) and type (`contraceptive_type`), categorized as 
+
+1 = Combined (estrogen/progestin)
+2 = Progestin-only
+3 = Unknown
+4 = Other. Past contraceptive use was captured through
+`contraceptives_past`, age at use (`contraceptive_past_age`), duration
+(`contraceptives_past_time`, coded as 0 = \<1 year and 1 = ≥1 year), and
+type (`contraceptive_past_type`) using the same categories.
+
+Menopause-related variables included hormone therapy use
+(`menopause_tx`, 0 = No, 1 = Yes) and type of therapy
+(`menopause_tx_type`), categorized as 
+
+1 = Combined (estrogen/progestin)
+2 = Progestin-only
+3 = Unknown
+4 = Other
+:::
+
+### Patient-Reported Outcomes and Psychological Measures
+
+::: {style="text-align: justify;"}
+Patient-reported outcomes included measures of quality of life, sleep
+quality, pain, mental health and psychological characteristics like
+resilience and personality.
+
+Global quality of life was assessed using `cal_totalcv`, derived from
+the WHOQOL instrument, where scores greater than 40 indicate high
+quality of life, reflecting individuals with active physical and mental
+engagement, positive social relationships, and a favorable perception of
+their position within their cultural and value systems.
+
+Sleep quality was evaluated using `cal_glob`, a composite score based on
+the Pittsburgh Sleep Quality Index (PSQI), which assesses sleep quality
+and related disturbances over the previous month. Scores range from 0 to
+21, with higher values indicating poorer sleep quality. Specifically,
+
+scores \<5 suggest no sleep problems
+5–7 indicate the potential need for medical attention
+8–14 suggest the need for clinical evaluation and possible treatment
+≥15 are indicative of severe sleep disturbances.
+
+Mental health was assessed using `calc_psicologico`, a WHOQOL-derived
+domain score (maximum of 24 points, where higher values indicate greater
+satisfaction), and `salud_mental`, an SF-36 domain score ranging from 0
+to 100, where higher scores reflect better perceived mental health
+status.
+
+Psychological symptomatology was assessed using the SCL-90-R instrument,
+with domain-specific continuous scores including 
+
+somatization (`scl90r_score_som`, range 11–55)
+obsessive-compulsive symptoms (`scl90r_score_oc`, range 7–35)
+interpersonal sensitivity (`scl90r_score_si`, range 7–35)
+depression (`scl90r_score_dep`, range 12–60)
+anxiety (`scl90r_score_ans`, range 9–45)
+hostility (`scl90r_score_hos`, range 5–25)
+phobic anxiety (`scl90r_score_fob`, range 3–15)
+paranoid ideation (`scl90r_score_para`, range 5–25)
+psychoticism (`sci90r_score_psi`, range 7–35). 
+
+Higher scores across these domains are associated with greater symptom severity, including somatic complaints, emotional distress, maladaptive thought patterns, and functional impairment.
+
+Physical pain was evaluated using `dolor_corporal_trans`, an SF-36
+transformed domain score ranging from 0 to 100, where higher values
+indicate better health status and lower perceived pain.
+
+Resilience was assessed using the Mexican Resilience Scale, which
+includes multiple domain-specific scores: 
+
+`factunofcmsumatotal` (strength and self-confidence)
+`factdoscompsumatotal` (social competence)
+`factresapoyofamsumatotal` (family support)
+`factcuatroapoyosocsumt` (social support)
+`factcincoestructsumtotal` (structure)
+
+Higher scores indicate greater resilience across domains. Specifically, 
+
+scores \>38 in strength and self-confidence reflect strong goal clarity, perseverance, and optimism
+
+scores \>16 in social competence indicate effective coping and adaptability
+
+scores \>12 in family support reflect strong familial
+bonds and shared values
+
+scores \>10 in social support indicate the presence of reliable social networks; 
+
+scores \>10 in structure reflect the ability to organize and plan effectively even in challenging situations.
+
+Personality traits were evaluated using the Five-Factor Model (Big
+Five), including 
+
+extroversion (`big_five_extro`)
+agreeableness (`big_five_agra`)
+conscientiousness (`big_five_cons`)
+neuroticism (`big_five_neurot`)
+openness to experience (`big_five_apert`)
+
+Higher scores in extroversion (\>20) are associated with sociability and enthusiasm
+
+higher agreeableness (\>22) reflects altruism and cooperativeness
+
+higher conscientiousness (\>22) indicates organization and self-discipline
+
+higher neuroticism (\>20) is associated with emotional instability and vulnerability to stress
+
+higher openness (\>25) reflects curiosity, creativity, and openness to new experiences.
+
+Lower scores in each domain correspond to the inverse behavioral
+tendencies.
+:::
+
+::: {style="text-align: justify;"}
+All variables retained their original REDCap structure, including
+checkbox encoding (suffix `___n`), categorical coding, and calculated
+fields. No recoding or renaming was performed, ensuring full alignment
+with the original data dictionary and facilitating reproducible analysis
+workflows.
+:::
+
+# Reading data set
+
+```{r}
+#| label: Reading data set
+#| include: false
+
+db.01 <-read.csv("~/R/Shinnyapp/base_de_datos_sin_registros_duplicados_ LupusProjectProducti_DATA_2026-01-06_1544.csv sin_col_vacias_con_suma_SLICC_SLEDAI_pred_dosis_categ_dx_time_curado (1).csv")
+```
+
+## Missingness check
+
+```{r Selecting variables, fig.width=10, fig.height=6}
+# Select variables
+db.01_selected <- db.01 %>%
+  dplyr::select(
+     record_id, 
+     sex___1, 
+     #sex___2, 
+     calculated_age, 
+     place_of_birth, 
+     dx_age,
+     prednisolona, 
+     pred_dosis, 
+     comorbidities, 
+     dx_time, time_symptoms,
+     treatment___0, 
+     treatment___1, 
+     treatment___2, 
+     treatment___3,
+     treatment___4, 
+     treatment___5, 
+     treatment___6, 
+     treatment___7,
+     treatment___8, 
+     aditional_treatment, 
+     family_sle,
+     family_member_sle___0, 
+     family_member_sle___1, 
+     family_member_sle___2,
+     family_member_sle___3, 
+     family_member_sle___4, 
+     family_member_sle___5,
+     family_member_sle___6, 
+     family_member_sle___7, 
+     family_member_sle___8,
+     home, 
+     ocupation, 
+     school, 
+     socioeconomic_status,
+     calc_psicologico, 
+     cal_totalcv, 
+     dolor_corporal_trans,
+     salud_mental_trans, 
+     cal_glob,
+     scl90r_score_som, 
+     scl90r_score_oc, 
+     scl90r_score_si,
+     scl90r_score_dep, 
+     scl90r_score_ans, 
+     scl90r_score_hos,
+     scl90r_score_fob, 
+     scl90r_score_para, 
+     sci90r_score_psi,
+     factunofcmsumatotal, 
+     factdoscompsumatotal, 
+     factresapoyofamsumatotal, 
+     factcuatroapoyosocsumt,
+     factcincoestructsumtotal,
+     big_five_extro, 
+     big_five_agra, 
+     big_five_cons, 
+     big_five_neurot, 
+     big_five_apert, 
+     height, 
+     weight, 
+     bmi, 
+     waist, 
+     hips,
+     metstotal, 
+     puntuacion_alimentacion, 
+     clasi_ali,
+     pregnant, 
+     pregnancy_plan, 
+     pregnancies, 
+     pregnancies_number,
+     pregnancies_2, 
+     pregn_end, 
+     pregn_end_2, 
+     pregn_end_3, 
+     pregn_end_4,
+     preeclampsie, 
+     pregn_compl, 
+     pregn_compl_time,
+     preeclampsie_2, 
+     pregn_compl_2, 
+     pregn_compl_time_2,
+     preeclampsie_3, 
+     pregn_compl_3, 
+     pregn_compl_time_3,
+     preeclampsie_4, 
+     pregn_compl_4, 
+     pregn_compl_time_4,
+     smoking, 
+     smoking_2, 
+     smoking_3, 
+     smoking_4,
+     breastfeeding, 
+     breasfeeding_type, 
+     breasfeeding_type_2,
+     breasfeeding_type_3, 
+     breasfeeding_type_4,
+     period_age, 
+     last_period, 
+     last_period_age,
+     cycle_regularity, 
+     histerectomy, 
+     ooforectomy,
+     ooforectomy_ovaries,
+     contraceptives, 
+     contraceptive_type,
+     contraceptives_past, 
+     contraceptive_past_age,
+     contraceptives_past_time, 
+     contraceptive_past_type,
+     menopause_tx, 
+     menopause_tx_type,
+     ht_heart_age, 
+     ht_cvd_risk,
+     Ocular, 
+     Neuropsychiatric, 
+     Renal, 
+     Pulmonary,
+     Cardiovascular, 
+     Cardiomyopathy, 
+     Peripheral.vascular,
+     Gastrointestinal, 
+     Musculoskeletal,  
+     Skin,
+     Premature.gonadal, 
+     Diabetes, 
+     Malignancy,
+     total.slicc, 
+     total.sledai, 
+     Disease.activity.classification,
+     pred_dosis_categ
+     )
+```
+
+```{r vismiss_plot_01, fig.width=10, fig.height=6}
+#View missing data by groups, from least to most missing
+#View data for variables 1–30 
+visdat::vis_miss(db.01_selected[, 1:30])
+```
+
+```{r vismiss_plot_02, fig.width=10, fig.height=6}
+#View data for variables 31–60
+visdat::vis_miss(db.01_selected[, 31:60])
+```
+
+```{r vismiss_plot_03, fig.width=10, fig.height=6}
+#View data for variables 61–90
+visdat::vis_miss(db.01_selected[, 61:90])
+```
+
+```{r vismiss_plot_04, fig.width=10, fig.height=6}
+#View data for variables 91–130
+visdat::vis_miss(db.01_selected[, 91:130])
+```
+
+Let's see the most missed variables
+
+```{r Most_missed_variables}
+db.missed <- db.01_selected %>%
+  summarise(across(everything(), ~ sum(is.na(.)))) %>%
+  pivot_longer(everything(), names_to = "variable", values_to = "na_count") %>%
+  mutate(na_percent = na_count / nrow(db.01_selected) * 100) %>%
+  arrange(desc(na_count))
+```
+
+
+::: {style="text-align: justify;"}
+The visualization of missing data reveals a high proportion of incomplete values in specific domains, particularly within reproductive health variables. Given the exploratory nature of this stage, no variables or observations were removed. However, for downstream analyses, it is recommended to consider reducing dimensionality by excluding reproductive variables with high missingness or prioritizing those with greater clinical relevance and completeness.
+:::
+
+### Selecting most complete variables
+
+After checking NAs, we established an threshold of 1500, in other words, variables with less than 1500 NAs was kept.
+
+```{r}
+#| label: Selcting variables with less than 1500 NAs
+
+vars_keep <- db.missed %>%
+  filter(na_count < 1500) %>%
+  pull(variable)
+
+db.03 <- db.01_selected %>%
+  select(all_of(vars_keep)) %>% 
+  na.omit()
+
+visdat::vis_miss(db.03)
+```
+
+### Check data structure
+
+```{r Checkin data structure}
+glimpse(db.03)
+```
+
+### Exporting data set
+
+```{r}
+#| label: Exporting selected variables
+write_csv(db.03, "Lupus_App_dataset.csv")
+
+# Verifying dataset 
+db.04 <- read.csv("Lupus_App_dataset.csv")
+glimpse(db.04)
+```
+
+
+# Second stage: neurolupus integration
+
+The second stage integrates the neurolupus information with the curated registry data. This includes the radiology interpretation dataset, the Volbrain outputs, and the MoCA assessment. The merge must be performed using the same RedCap participant ID.
+
+```{r neuro_integration}
+# Here is where the neurolupus file will be added
+
+```
