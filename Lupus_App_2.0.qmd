@@ -131,6 +131,8 @@ load_or_install(required_packages)
 
 ### Explanation Pestaña 4
 
+### Explanation Pestaña 5
+
 ## Loading dataset
 
 ```{r}
@@ -463,6 +465,81 @@ glimpse(formated_lupus_data)
 ```
 
 
+## Reanaming dataset
+
+```{r}
+#| label: Renaming variables
+
+formated_lupus_data <- formated_lupus_data %>%
+   rename(Anios_viviendo_con_LES=dx_time,
+          Anios_retraso_diagnostico=time_symptoms,
+          Somatizacion=scl90r_score_som,
+          Obsesion_y_compulsion=scl90r_score_oc,
+          Sensitividad_interpersonal=scl90r_score_si,
+          Depresion=scl90r_score_dep,
+          Ansiedad=scl90r_score_ans,
+          Hostilidad=scl90r_score_hos,
+          Fobia=scl90r_score_fob,
+          Ideacion_paranoide=scl90r_score_para,
+          Psicoticismo=sci90r_score_psi,
+          Tiene_familiar_con_LES=family_sle,
+          Clasificacion_habitos_alimentacion=clasi_ali,
+          Salud_mental=salud_mental_trans,
+          Calidad_de_vida_dominio_psicologico=calc_psicologico,
+          Calidad_de_vida_total=cal_totalcv,
+          Comorbilidades=comorbidities,
+          Tratamiento_adicional_a_LES=aditional_treatment,
+          Tratamiento_corticoide=prednisolona,
+          Nivel_socioeconomico=socioeconomic_status,
+          Ocupacion=ocupation,
+          Escolaridad=school,
+          Estado_de_residencia=home,
+          Edad=calculated_age,
+          Indice_calidad_sueno=cal_glob,
+          Dolor_corporal=dolor_corporal_trans,
+          record_id=record_id,
+          Sexo=sex___1,
+          Estado_de_nacimiento=place_of_birth,
+          Tratamiento_con_antimalaricos=treatment___0,
+          Tratamiento_con_corticosteroides=treatment___1,
+          Tratamiento_con_micofenolato=treatment___2,
+          Tratamiento_con_azatioprina=treatment___3,
+          Tratamiento_con_metotrexato=treatment___4,
+          Tratamiento_con_rituximab=treatment___5,
+          Tratamiento_con_ciclosporina=treatment___6,
+          Tratamiento_con_ciclofosfamida=treatment___7,
+          Tratamiento_con_otros_farmacos=treatment___8,
+          Padre_con_LES=family_member_sle___0,
+          Madre_con_LES=family_member_sle___1,
+          Hermanos_con_LES=family_member_sle___2,
+          Abuelos_con_LES=family_member_sle___3,
+          Tios_con_LES=family_member_sle___4,
+          Primos_con_LES=family_member_sle___5,
+          Sobrinos_con_LES=family_member_sle___6,
+          Hijos_con_LES=family_member_sle___7,
+          Otros_familiares_con_LES=family_member_sle___8,
+          Danio_ocular=Ocular,
+          Danio_neuropsiquiatrico=Neuropsychiatric,
+          Danio_renal=Renal,
+          Danio_pulmonar=Pulmonary,
+          Danio_cardiovascular=Cardiovascular,
+          Danio_cardiomiopatia=Cardiomyopathy,
+          Danio_vascular_periferico=Peripheral.vascular,
+          Danio_gastrointestinal=Gastrointestinal,
+          Danio_musculoesquletico=Musculoskeletal,
+          Danio_cutaneo=Skin,
+          Fallo_gonadal_prematuro=Premature.gonadal,
+          Padece_diabetes=Diabetes,
+          Presenta_cancer=Malignancy,
+          Slicc=total.slicc,
+          Sledai=total.sledai,
+          Nivel_de_actividad_del_LES=Disease.activity.classification
+)
+
+formated_lupus_data
+glimpse(formated_lupus_data)
+```
+
 ## Shiny App
 
 ```{r}
@@ -523,7 +600,28 @@ ui <- page_navbar(
             )
   ),
   
-  # Pestaña 4: Acceso a Datos
+  
+  # Pestaña 4: Expresión Génica
+  nav_panel(title = "Expresión Génica",
+            sidebarLayout(
+              sidebarPanel(
+                h4("Análisis Transcriptómico"),
+                selectInput("var_gene", "Selecciona Gene(s):", 
+                            choices = c("IFNIT", "STAT1", "OAS1", "MX1"), 
+                            multiple = TRUE),
+                radioButtons("plot_type", "Tipo de visualización:", 
+                             choices = c("Boxplot de Expresión", "Volcano Plot", "Heatmap")),
+                actionButton("run_gene", "Analizar Expresión", class = "btn-primary")
+              ),
+              mainPanel(
+                h3("Resultados de Expresión Diferencial"),
+                textOutput("txt_reporte_gene"), # Salida de texto
+                plotOutput("plot_gene")        # Espacio para gráfica futura
+              )
+            )
+  ),
+  
+  # Pestaña 5: Acceso a Datos
   nav_panel(title = "Acceso a Datos Crudos",
             div(class = "container mt-5",
                 h2("Solicitud de Datos"),
@@ -562,7 +660,24 @@ server <- function(input, output, session) {
             ". Aquí se describirán las asociaciones entre los puntajes clínicos y los hallazgos de resonancia.")
     })
   })
-}
+  
+   # Lógica Pestaña 4
+    observeEvent(input$run_gene, {
+      output$txt_reporte_gene <- renderText({
+        paste("Analizando la expresión de los genes:", paste(input$var_gene, collapse = ", "), 
+              "mediante un", input$plot_type, 
+              ". En esta sección se integrará el análisis de cuentas normalizadas o Fold-Change.")
+      })
+      
+      # Placeholder para la gráfica
+      output$plot_gene <- renderPlot({
+        # Aquí irá la lógica de ggplot2 una vez se carguen los datos de expresión
+      })
+    })
+    
+    
+  }
+
 
 shinyApp(ui, server)
 
