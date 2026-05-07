@@ -133,12 +133,13 @@ load_or_install(required_packages)
 
 ### Explanation Pestaña 5
 
-## Loading dataset
+## Loading datasets
 
 ```{r}
 #| label: Load dataset
 
 path = "Lupus_App_dataset.csv"
+path_2 = "Personas_escaneadas_Lupus_Base_NeurolupusApp.csv"
 
 load_lupus_data <- function(path) {
   raw_data <- read_csv(path, show_col_types = FALSE)
@@ -155,12 +156,14 @@ load_lupus_data <- function(path) {
 }
 
 lupus_data <- load_lupus_data(path)
+lupus_data_2 <- load_lupus_data(path_2)
+
 ```
 
-## Formating dataset
+## Formating datasets
 
 ```{r}
-#| label: Formating dataset
+#| label: Formating dataset 01
 
 formated_lupus_data <- lupus_data %>% 
   mutate(
@@ -464,6 +467,77 @@ formated_lupus_data <- formated_lupus_data %>%
 glimpse(formated_lupus_data)
 ```
 
+```{r}
+#| label: Formatind Dataset 02
+glimpse(lupus_data_2)
+lupus_data_2 <- lupus_data_2 %>% 
+  select(RedCapID,
+         Grado_de_estudios,
+         Anios_de_escolaridad,
+         Puntaje_MoCA,
+         MoCa_identificacion,
+         MoCA_atencion,
+         MoCA_lenguaje,
+         MoCA_abstraccion,
+         MoCA_recuerdo_diferido,
+         MoCA_orientacion,
+         Quality.control.T1,
+         Quality.control.FLAIR,
+         White.Matter..WM..volume.cm3,
+         Total.lesion.count,
+         Total.lesion.volume..absolute..cm3,
+         Total.lesion.volume..normalized...,
+         Total.lesion.burden,
+         Caracteristicas_conservadas,
+         Variantes_anatomicas,
+         Aracnoide_selar,
+         Quistes,
+         Atrofia_cambios_involutivos,
+         Gliosis_sustancia_blanca,
+         Malacia_cortical,
+         Lesiones_ocupantes_malformaciones
+        
+         )
+glimpse(lupus_data_2)
+formated_lupus_data_2 <- lupus_data_2 %>% 
+  mutate(
+    Grado_de_estudios = factor(
+      Grado_de_estudios,
+      levels = c(
+        "Secundaria",
+        "Preparatoria",
+        "TSU",
+        "Carrera_tecnica",
+        "Licenciatura",
+        "Maestria",
+        "Posgrado",
+        "Doctorado"),
+      ordered = T
+      ),
+    
+    Quality.control.T1 = factor(
+      Quality.control.T1,
+      levels = c(
+        "A",
+        "B",
+        "C"),
+      ordered = T
+      ),
+    Quality.control.FLAIR = factor(
+      Quality.control.FLAIR,
+      levels = c(
+        "A",
+        "B",
+        "C"),
+      ordered = T
+      ),
+    
+    )
+
+glimpse(formated_lupus_data_2)
+
+```
+
 
 ## Reanaming dataset
 
@@ -539,6 +613,25 @@ formated_lupus_data <- formated_lupus_data %>%
 formated_lupus_data
 glimpse(formated_lupus_data)
 ```
+
+## Joint Neurolupus dataset
+
+```{r}
+#| label: Joint Neurolupus Dataset
+
+# Unimos la base de datos de neuroimagen con los datos clínicos generales
+formated_neurolupus_data <- formated_lupus_data_2 %>%
+  left_join(
+    formated_lupus_data, 
+    by = c("RedCapID" = "record_id") # Igualamos las llaves identificadoras
+  ) %>%
+  # Opcional: Reordenar para tener el ID al inicio y limpiar columnas redundantes si las hubiera
+  relocate(RedCapID)
+
+# Verificamos la integración correcta de las variables
+glimpse(formated_neurolupus_data)
+```
+
 
 ## Shiny App
 
@@ -682,3 +775,7 @@ server <- function(input, output, session) {
 shinyApp(ui, server)
 
 ```
+
+
+
+
