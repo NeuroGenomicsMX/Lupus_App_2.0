@@ -39,7 +39,8 @@ editor:
 required_packages <- c(
   "tidyverse",
   "shiny",
-  "bslib"
+  "bslib",
+  "nnet"
   )
 
 # Feature for automatically installing and downloading packages
@@ -859,7 +860,7 @@ ui <- page_navbar(
             )
   ),
   
-  # Pestaña 2: Modelado Estadístico
+  
   # Pestaña 2: Modelado Estadístico
   nav_panel(title = "Modelado Estadístico",
             sidebarLayout(
@@ -956,7 +957,6 @@ sidebarLayout(
 )
 
 # Lógica del Servidor (Server)
-
 # Lógica del Servidor (Server)
 server <- function(input, output, session) {
   
@@ -968,18 +968,17 @@ server <- function(input, output, session) {
     })
   })
   
-  # Lógica Pestaña 2: Modelado estasítico
   # --- Lógica Pestaña 2: Modelado Estadístico ---
   
   modelo_general_reactivo <- eventReactive(input$run_model, {
     req(input$var_target, input$var_predict)
     
-    # 1. Preparación de datos (Base General completa)
+    # 1. Preparación de datos 
     df_model <- formated_lupus_data 
     target_var <- input$var_target
     pred_vars <- input$var_predict
     
-    # Prevenir que el usuario ponga la misma variable como target y predictor
+    # Prevenir auto-referencia
     if(target_var %in% pred_vars) {
       msg <- "Error: La variable objetivo no puede estar incluida entre las predictoras. Por favor, ajusta tu selección."
       return(list(texto_humano = msg, texto_tecnico = msg))
@@ -988,73 +987,136 @@ server <- function(input, output, session) {
     all_labels <- unlist(diccionario_modelado)
     target_label <- names(all_labels)[all_labels == target_var]
     
-    # 2. Detección del tipo de modelo (Binario vs Continuo)
-    is_binary <- is.factor(df_model[[target_var]]) || length(unique(na.omit(df_model[[target_var]]))) == 2
-    model_type <- if(is_binary) "Regresión Binomial (Logística)" else "Regresión Lineal Múltiple"
+    # 2. Detección del tipo de modelo (Lineal / Binomial / Multinomial)
+    y_data <- df_model[[target_var]]
+    n_levels <- length(unique(na.omit(y_data)))
+    is_categorical <- is.factor(y_data) || is.character(y_data)
+    
+    if (is_categorical && n_levels > 2) {
+      tipo_regresion <- "multinomial"
+      nombre_metodo <- "Regresión Logística Multinomial"
+    } else if ((is_categorical && n_levels == 2) || (is.numeric(y_data) && n_levels == 2)) {
+      tipo_regresion <- "binomial"
+      nombre_metodo <- "Regresión Binomial (Logística)"
+    } else {
+      tipo_regresion <- "lineal"
+      nombre_metodo <- "Regresión Lineal Múltiple"
+    }
     
     formula_model <- as.formula(paste(target_var, "~", paste(pred_vars, collapse = " + ")))
     
     # 3. Ejecución segura del modelo
     tryCatch({
-      if(is_binary) {
+      if(tipo_regresion == "binomial") {
         fit <- glm(formula_model, data = df_model, family = "binomial")
+        n_sujetos <- nobs(fit)
+      } else if (tipo_regresion == "multinomial") {
+        # nnet::multinom es silencioso gracias a trace = FALSE
+        fit <- nnet::multinom(formula_model, data = df_model, trace = FALSE)
+        n_sujetos <- nrow(model.frame(fit)) # multinom usa model.frame para el N exacto
       } else {
         fit <- lm(formula_model, data = df_model)
+        n_sujetos <- nobs(fit)
       }
-      
-      n_sujetos <- nobs(fit)
-      stats <- summary(fit)$coefficients
-      r_sq <- if(!is_binary) round(summary(fit)$r.squared * 100, 1) else NA
       
       # 4. Redacción del reporte humano
       reporte_lineas <- c(
         "### RESUMEN DEL MODELO ESTRUCTURAL GENERAL ###", "",
         paste("Objetivo: Evaluar el efecto sobre '", target_label, "'.", sep = ""),
         paste("Muestra: El análisis se ejecutó exitosamente con ", n_sujetos, " sujetos válidos.", sep = ""),
-        paste("Método: Se aplicó una", model_type, "ajustada por", length(pred_vars), "variables principales."), ""
+        paste("Método: Se aplicó un modelo de", nombre_metodo, "ajustado por", length(pred_vars), "variables."), ""
       )
       
-      sig_rows <- rownames(stats)[stats[,4] <= 0.05 & rownames(stats) != "(Intercept)"]
+      # --- PARSEO DE RESULTADOS DEPENDIENDO DEL MODELO ---
       
-      if(length(sig_rows) > 0) {
-        reporte_lineas <- c(reporte_lineas, "RESULTADOS CLAVE (Variables con significancia p <= 0.05):")
+      if (tipo_regresion == "multinomial") {
+        # Para multinomial: calcular p-values mediante Test de Wald
+        summ <- summary(fit)
+        z_vals <- summ$coefficients / summ$standard.errors
+        p_matrix <- (1 - pnorm(abs(z_vals), 0, 1)) * 2
         
-        for(row in sig_rows) {
-          # Lógica para emparejar variables dummy (factores) con sus nombres originales
-          clean_label <- row
-          for(var_tec in pred_vars) {
-            if(grepl(var_tec, row)) {
-              human_name <- names(all_labels)[all_labels == var_tec]
-              level_name <- gsub(var_tec, "", row) # Extraer el nivel del factor (ej. "Empleado")
-              clean_label <- paste0(human_name, " (", level_name, ")")
-              break
+        reporte_lineas <- c(reporte_lineas, "RESULTADOS CLAVE (p <= 0.05 frente al grupo de referencia):")
+        hay_sig <- FALSE
+        
+        clases <- rownames(p_matrix)
+        predictores <- colnames(p_matrix)
+        
+        # Iterar sobre las clases (Ej: Nivel Actividad Alta vs Sin Actividad)
+        for (i in 1:nrow(p_matrix)) {
+          clase_actual <- clases[i]
+          for (j in 1:ncol(p_matrix)) {
+            if (predictores[j] != "(Intercept)" && p_matrix[i, j] <= 0.05) {
+              hay_sig <- TRUE
+              var_tec <- predictores[j]
+              
+              # Traductor de variables dummy
+              clean_label <- var_tec
+              for(v in pred_vars) {
+                if(grepl(v, var_tec)) {
+                  clean_label <- paste0(names(all_labels)[all_labels == v], " (", gsub(v, "", var_tec), ")")
+                  break
+                }
+              }
+              if(var_tec %in% all_labels) clean_label <- names(all_labels)[all_labels == var_tec]
+              
+              or_val <- round(exp(summ$coefficients[i, j]), 2)
+              p_val <- round(p_matrix[i, j], 4)
+              
+              reporte_lineas <- c(reporte_lineas, paste("- '", clean_label, "': Aumenta ", or_val, " veces la probabilidad de presentar '", clase_actual, "' (Odds Ratio, p = ", p_val, ").", sep=""))
             }
           }
-          
-          # En caso de que sea numérica pura y se encuentre directamente
-          if(row %in% all_labels) clean_label <- names(all_labels)[all_labels == row]
-          
-          p_val <- round(stats[row, 4], 4)
-          
-          if(is_binary) {
-            or_val <- round(exp(stats[row, 1]), 2)
-            reporte_lineas <- c(reporte_lineas, paste("- '", clean_label, "': Aumenta la probabilidad ", or_val, " veces (Odds Ratio, p = ", p_val, ").", sep = ""))
-          } else {
-            coeff <- round(stats[row, 1], 2)
-            reporte_lineas <- c(reporte_lineas, paste("- '", clean_label, "': Genera un cambio estimado de ", coeff, " unidades (p = ", p_val, ").", sep = ""))
-          }
         }
+        if(!hay_sig) reporte_lineas <- c(reporte_lineas, "No se detectaron asociaciones significativas para los predictores seleccionados.")
+        
       } else {
-        reporte_lineas <- c(reporte_lineas, "RESULTADOS: No se detectaron asociaciones estadísticamente significativas para los predictores seleccionados en esta muestra.")
+        # Para Binomial y Lineal (Lógica estándar)
+        stats <- summary(fit)$coefficients
+        p_values <- stats[, 4]
+        coef_vals <- stats[, 1]
+        
+        sig_idx <- which(p_values <= 0.05 & names(p_values) != "(Intercept)")
+        
+        if(length(sig_idx) > 0) {
+          reporte_lineas <- c(reporte_lineas, "RESULTADOS CLAVE (Variables con significancia p <= 0.05):")
+          
+          for(idx in sig_idx) {
+            row_name <- names(p_values)[idx]
+            clean_label <- row_name
+            
+            for(var_tec in pred_vars) {
+              if(grepl(var_tec, row_name)) {
+                clean_label <- paste0(names(all_labels)[all_labels == var_tec], " (", gsub(var_tec, "", row_name), ")")
+                break
+              }
+            }
+            if(row_name %in% all_labels) clean_label <- names(all_labels)[all_labels == row_name]
+            
+            p_val <- round(p_values[idx], 4)
+            
+            if(tipo_regresion == "binomial") {
+              or_val <- round(exp(coef_vals[idx]), 2)
+              reporte_lineas <- c(reporte_lineas, paste("- '", clean_label, "': Aumenta la probabilidad ", or_val, " veces (Odds Ratio, p = ", p_val, ").", sep = ""))
+            } else {
+              coeff <- round(coef_vals[idx], 2)
+              reporte_lineas <- c(reporte_lineas, paste("- '", clean_label, "': Genera un cambio estimado de ", coeff, " unidades (p = ", p_val, ").", sep = ""))
+            }
+          }
+        } else {
+          reporte_lineas <- c(reporte_lineas, "RESULTADOS: No se detectaron asociaciones estadísticamente significativas para los predictores seleccionados en esta muestra.")
+        }
+        
+        if(tipo_regresion == "lineal") {
+          r_sq <- round(summary(fit)$r.squared * 100, 1)
+          reporte_lineas <- c(reporte_lineas, "", paste("AJUSTE: El modelo explica el", r_sq, "% de la variabilidad de la variable objetivo."))
+        }
       }
-      
-      if(!is_binary) reporte_lineas <- c(reporte_lineas, "", paste("AJUSTE: El modelo explica el", r_sq, "% de la variabilidad de la variable objetivo."))
       
       # 5. Generar reporte técnico crudo
       raw_summary <- capture.output(summary(fit))
       header_tecnico <- c(
         "==================================================",
         "REPORTE TÉCNICO DE MODELADO ESTADÍSTICO GENERAL",
+        paste("Tipo de Modelo:", nombre_metodo),
         paste("Fecha de análisis:", Sys.time()),
         paste("Sujetos incluidos en la muestra (n):", n_sujetos),
         "==================================================",
@@ -1072,18 +1134,18 @@ server <- function(input, output, session) {
     })
   })
 
-  # Renderizar texto en pantalla
+  # Renderizar texto en pantalla de la Pestaña 2
   output$txt_reporte_modelo <- renderText({
     modelo_general_reactivo()$texto_humano
   })
 
-  # Descargar output técnico
+  # Descargar output técnico de la Pestaña 2
   output$download_modelo_summary <- downloadHandler(
     filename = function() { paste("Resumen_Modelo_General_", Sys.Date(), ".txt", sep = "") },
     content = function(file) { writeLines(modelo_general_reactivo()$texto_tecnico, file) }
   )
-  
-  # Lógica Pestaña 3: Neurolupus
+
+  # --- Lógica Pestaña 3: Neurolupus ---
   
   modelo_neuro_reactivo <- eventReactive(input$run_neuro_model, {
     req(input$neuro_target, input$neuro_predictors)
@@ -1163,14 +1225,12 @@ server <- function(input, output, session) {
     })
   })
 
-  # --- ¡AQUÍ ESTABAN LAS LÍNEAS FALTANTES! ---
-  
-  # Renderizar el texto en la pantalla de la app
+  # Renderizar el texto en la pantalla de la app (Pestaña 3)
   output$txt_reporte_neuro_model <- renderText({
     modelo_neuro_reactivo()$texto_humano
   })
 
-  # Manejar la descarga del archivo técnico
+  # Manejar la descarga del archivo técnico (Pestaña 3)
   output$download_neuro_summary <- downloadHandler(
     filename = function() {
       paste("Resumen_Estadistico_Neurolupus_", Sys.Date(), ".txt", sep = "")
@@ -1180,9 +1240,7 @@ server <- function(input, output, session) {
     }
   )
   
-  # -------------------------------------------
-  
-  # Lógica Pestaña 4
+  # --- Lógica Pestaña 4: Expresión Génica ---
   observeEvent(input$run_gene, {
     output$txt_reporte_gene <- renderText({
       paste("Analizando la expresión de los genes:", paste(input$var_gene, collapse = ", "), 
