@@ -690,6 +690,86 @@ glimpse(formated_neurolupus_data_02)
 ```
 
 
+## Defining Human-readable dictionaries
+
+```{r}
+#| label: Neurolupus dictionary
+
+# Diccionario completo para el módulo de Neurolupus
+diccionario_neuro_completo <- list(
+  
+  "Evaluación Cognitiva (MoCA)" = c(
+    "Puntaje Total MoCA" = "Puntaje_MoCA",
+    "Atención" = "MoCA_atencion",
+    "Identificación" = "MoCa_identificacion",
+    "Lenguaje" = "MoCA_lenguaje",
+    "Abstracción" = "MoCA_abstraccion",
+    "Recuerdo Diferido" = "MoCA_recuerdo_diferido",
+    "Orientación" = "MoCA_orientacion"
+  ),
+  
+  "Hallazgos de Neuroimagen (RM)" = c(
+    "Conteo Total de Lesiones" = "Total.lesion.count",
+    "Carga Lesional (Burden)" = "Total.lesion.burden",
+    "Características Conservadas" = "Caracteristicas_conservadas",
+    "Variantes Anatómicas" = "Variantes_anatomicas",
+    "Aracnoide Selar" = "Aracnoide_selar",
+    "Quistes" = "Quistes",
+    "Atrofia / Cambios Involutivos" = "Atrofia_cambios_involutivos",
+    "Gliosis en Sustancia Blanca" = "Gliosis_sustancia_blanca",
+    "Malacia Cortical" = "Malacia_cortical",
+    "Lesiones Ocupantes / Malformaciones" = "Lesiones_ocupantes_malformaciones"
+  ),
+  
+  "Salud Mental y Psicológica (SCL-90-R y PROMs)" = c(
+    "Percepción Global de Salud Mental" = "Salud_mental",
+    "Somatización" = "Somatizacion",
+    "Obsesión y Compulsión" = "Obsesion_y_compulsion",
+    "Sensitividad Interpersonal" = "Sensitividad_interpersonal",
+    "Depresión" = "Depresion",
+    "Ansiedad" = "Ansiedad",
+    "Hostilidad" = "Hostilidad",
+    "Fobia" = "Fobia",
+    "Ideación Paranoide" = "Ideacion_paranoide",
+    "Psicoticismo" = "Psicoticismo",
+    "Calidad de Vida (Dominio Psicológico)" = "Calidad_de_vida_dominio_psicologico",
+    "Calidad de Vida Total" = "Calidad_de_vida_total",
+    "Índice de Calidad de Sueño" = "Indice_calidad_sueno",
+    "Dolor Corporal" = "Dolor_corporal"
+  ),
+  
+  "Actividad y Daño Acumulado" = c(
+    "Puntaje SLEDAI (Actividad)" = "Sledai",
+    "Puntaje SLICC (Daño Total)" = "Slicc",
+    "Daño Neuropsiquiátrico" = "Danio_neuropsiquiatrico",
+    "Daño Cardiovascular" = "Danio_cardiovascular",
+    "Daño Vascular Periférico" = "Danio_vascular_periferico"
+  ),
+  
+  "Perfil Clínico y Tratamiento" = c(
+    "Años viviendo con LES" = "Anios_viviendo_con_LES",
+    "Años de Retraso Diagnóstico" = "Anios_retraso_diagnostico",
+    "Número Total de Tratamientos" = "num_treatments",
+    "Tiene Tratamiento Activo" = "any_treatment",
+    "Uso de Corticoesteroides" = "uses_corticosteroids",
+    "Tratamiento con Antimaláricos" = "Tratamiento_con_antimalaricos",
+    "Tratamiento con Ciclofosfamida" = "Tratamiento_con_ciclofosfamida",
+    "Tratamiento con Rituximab" = "Tratamiento_con_rituximab"
+  ),
+  
+  "Sociodemográficos y Antecedentes" = c(
+    "Edad" = "Edad",
+    "Sexo" = "Sexo",
+    "Nivel Socioeconómico" = "Nivel_socioeconomico",
+    "Años de Escolaridad" = "Anios_de_escolaridad",
+    "Familiar de 1er Grado con LES" = "has_first_degree_sle",
+    "Número de Familiares con LES" = "num_family_members_sle"
+  )
+)
+
+```
+
+
 ## Shiny App
 
 ```{r}
@@ -737,17 +817,30 @@ ui <- page_navbar(
   
   # Pestaña 3: Neurolupus
   nav_panel(title = "Neurolupus",
-            sidebarLayout(
-              sidebarPanel(
-                h4("Filtros Neurológicos"),
-                selectInput("var_neuro", "Variables de Interés:", choices = c("Lesiones Tractos", "Eventos Cerebrovasculares", "Puntaje MoCA"), multiple = TRUE),
-                actionButton("run_neuro", "Generar Reporte", class = "btn-primary")
-              ),
-              mainPanel(
-                h3("Reporte Neurocognitivo y de Imagen"),
-                textOutput("txt_reporte_neuro") # Salida de texto reactiva
-              )
-            )
+            # En la sección de la UI -> nav_panel(title = "Neurolupus", ...)
+sidebarLayout(
+  sidebarPanel(
+    h4("Análisis de Predicción Neurolupus"),
+    # Selección de Variable Objetivo
+    selectInput("neuro_target", "Variable Objetivo (Resultado):", 
+                choices = diccionario_neuro_completo),
+    
+    # Selección de Predictores (Máximo 5)
+    selectizeInput("neuro_predictors", "Variables Predictoras (Máximo 5):", 
+                   choices = diccionario_neuro_completo, 
+                   multiple = TRUE, 
+                   options = list(maxItems = 5)),
+    
+    hr(),
+    actionButton("run_neuro_model", "Efectuar Análisis Estadístico", class = "btn-primary")
+  ),
+  mainPanel(
+    h3("Reporte de Análisis Neurocognitivo"),
+    wellPanel(
+      textOutput("txt_reporte_neuro_model")
+    )
+  )
+)
   ),
   
   
@@ -804,13 +897,94 @@ server <- function(input, output, session) {
   })
   
   # Lógica Pestaña 3
-  observeEvent(input$run_neuro, {
-    output$txt_reporte_neuro <- renderText({
-      paste("Reporte de Neurolupus generado para:", paste(input$var_neuro, collapse = ", "),
-            ". Aquí se describirán las asociaciones entre los puntajes clínicos y los hallazgos de resonancia.")
+  # Dentro de la función server
+  # Dentro de la función server
+observeEvent(input$run_neuro_model, {
+  output$txt_reporte_neuro_model <- renderText({
+    req(input$neuro_target, input$neuro_predictors)
+    
+    # 1. Preparación de datos y etiquetas
+    df_model <- formated_neurolupus_data_02 
+    target_var <- input$neuro_target
+    pred_vars <- input$neuro_predictors
+    
+    # Recuperar nombres legibles para el reporte
+    all_labels <- unlist(diccionario_neuro_completo)
+    target_label <- names(all_labels)[all_labels == target_var]
+    
+    # 2. Detección automática del tipo de modelo
+    is_binary <- is.factor(df_model[[target_var]]) || length(unique(na.omit(df_model[[target_var]]))) == 2
+    model_type <- if(is_binary) "Regresión Binomial (Logística)" else "Regresión Lineal Múltiple"
+    
+    # Construcción de fórmula
+    formula_model <- as.formula(paste(target_var, "~", paste(pred_vars, collapse = " + ")))
+    
+    # 3. Ejecución del Modelo
+    tryCatch({
+      if(is_binary) {
+        fit <- glm(formula_model, data = df_model, family = "binomial")
+        stats <- summary(fit)$coefficients
+      } else {
+        fit <- lm(formula_model, data = df_model)
+        stats <- summary(fit)$coefficients
+        r_sq <- round(summary(fit)$r.squared * 100, 1)
+      }
+      
+      # 4. Redacción del Reporte Humano
+      reporte <- paste0("### RESUMEN DEL MODELO ESTRUCTURAL ###\n\n",
+                        "Objetivo: Evaluar el efecto sobre '", 
+                        target_label, 
+                        "'.\n",
+                        "Método: Se aplicó una ", 
+                        model_type, 
+                        " ajustada por ", 
+                        length(pred_vars), 
+                        " variables.\n\n")
+      
+      # Evaluación de predictores significativos (p < 0.05)
+      sig_rows <- rownames(stats)[stats[,4] < 0.05 & rownames(stats) != "(Intercept)"]
+      
+      if(length(sig_rows) > 0) {
+        reporte <- paste0(reporte, "RESULTADOS CLAVE:\n")
+        for(row in sig_rows) {
+          clean_label <- names(all_labels)[all_labels == row]
+          p_val <- round(stats[row, 4], 4)
+          
+          if(is_binary) {
+            # Calcular Odds Ratio para modelos binomiales
+            or_val <- round(exp(stats[row, 1]), 2)
+            reporte <- paste0(reporte, 
+                              "- La variable '", 
+                              clean_label, 
+                              "' es significativa (p = ", p_val, 
+                              "). Por cada unidad de incremento, la probabilidad del evento aumenta ", 
+                              or_val, " veces (Odds Ratio).\n")
+          } else {
+            coeff <- round(stats[row, 1], 2)
+            reporte <- paste0(reporte, "- '", 
+                              clean_label, 
+                              "' muestra una asociación significativa (p = ", p_val, 
+                              "). Un aumento en esta variable se traduce en un cambio de ", coeff, 
+                              " unidades en '", target_label, "'.\n")
+          }
+        }
+      } else {
+        reporte <- paste0(reporte, "RESULTADOS: No se detectaron asociaciones con significancia estadística (p < 0.05) para los predictores seleccionados en esta muestra.\n")
+      }
+      
+      if(!is_binary) {
+        reporte <- paste0(reporte, "\nAJUSTE: El modelo explica el ", r_sq, "% de la variabilidad observada.")
+      }
+      
+      return(reporte)
+      
+    }, error = function(e) {
+      return(paste("Error en el procesamiento: Los datos seleccionados no permiten la convergencia del modelo.",
+                   "Verifique que las variables tengan suficientes casos válidos (N).", e$message))
     })
   })
-  
+})
+
    # Lógica Pestaña 4
     observeEvent(input$run_gene, {
       output$txt_reporte_gene <- renderText({
