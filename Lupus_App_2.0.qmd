@@ -614,7 +614,7 @@ formated_lupus_data
 glimpse(formated_lupus_data)
 ```
 
-## Joint Neurolupus dataset
+## Joint Neurolupus dataset & variables selection
 
 ```{r}
 #| label: Joint Neurolupus Dataset
@@ -630,6 +630,63 @@ formated_neurolupus_data <- formated_lupus_data_2 %>%
 
 # Verificamos la integración correcta de las variables
 glimpse(formated_neurolupus_data)
+
+# Seleccionamos variables
+
+formated_neurolupus_data_02 <- formated_neurolupus_data %>% 
+  select(Puntaje_MoCA,
+         MoCA_atencion,
+         MoCa_identificacion,
+         MoCA_lenguaje,
+         MoCA_abstraccion,
+         MoCA_recuerdo_diferido,
+         MoCA_orientacion,
+         Total.lesion.count,
+         Total.lesion.burden,
+         Caracteristicas_conservadas,
+         Variantes_anatomicas,
+         Aracnoide_selar,
+         Quistes,
+         Atrofia_cambios_involutivos,
+         Gliosis_sustancia_blanca,
+         Malacia_cortical,
+         Lesiones_ocupantes_malformaciones,
+         Anios_viviendo_con_LES,
+         Anios_retraso_diagnostico,
+         Anios_de_escolaridad,
+         Somatizacion,
+         Obsesion_y_compulsion,
+         Sensitividad_interpersonal,
+         Depresion,
+         Ansiedad,
+         Hostilidad,
+         Fobia,
+         Ideacion_paranoide,
+         Psicoticismo,
+         Salud_mental,
+         Calidad_de_vida_dominio_psicologico,
+         Calidad_de_vida_total,
+         Nivel_socioeconomico,
+         Edad,
+         Indice_calidad_sueno,
+         Dolor_corporal,
+         Sexo,
+         Tratamiento_con_antimalaricos,
+         uses_corticosteroids,
+         Tratamiento_con_ciclofosfamida,
+         Tratamiento_con_rituximab,
+         has_first_degree_sle,
+         num_family_members_sle,
+         num_treatments,
+         any_treatment,
+         Danio_neuropsiquiatrico,
+         Danio_cardiovascular,
+         Danio_vascular_periferico,
+         Slicc,
+         Sledai
+         )
+glimpse(formated_neurolupus_data_02)
+
 ```
 
 
