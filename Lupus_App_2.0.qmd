@@ -695,6 +695,67 @@ glimpse(formated_neurolupus_data_02)
 ```{r}
 #| label: Neurolupus dictionary
 
+# Diccionario general para el módulo de Modelado Estadístico
+diccionario_modelado <- list(
+  
+  "Actividad y Daño de la Enfermedad" = c(
+    "Puntaje SLEDAI (Actividad Continua)" = "Sledai",
+    "Nivel de Actividad (Categórica)" = "Nivel_de_actividad_del_LES",
+    "Puntaje SLICC (Daño Acumulado)" = "Slicc",
+    "Años viviendo con LES" = "Anios_viviendo_con_LES",
+    "Años de retraso en diagnóstico" = "Anios_retraso_diagnostico"
+  ),
+  
+  "Daño a Órganos Específicos" = c(
+    "Daño Renal" = "Danio_renal",
+    "Daño Neuropsiquiátrico" = "Danio_neuropsiquiatrico",
+    "Daño Pulmonar" = "Danio_pulmonar",
+    "Daño Cardiovascular" = "Danio_cardiovascular",
+    "Daño Musculoesquelético" = "Danio_musculoesquletico",
+    "Daño Cutáneo" = "Danio_cutaneo",
+    "Fallo Gonadal Prematuro" = "Fallo_gonadal_prematuro"
+  ),
+  
+  "Salud Mental y Psicológica" = c(
+    "Depresión" = "Depresion",
+    "Ansiedad" = "Ansiedad",
+    "Somatización" = "Somatizacion",
+    "Obsesión y Compulsión" = "Obsesion_y_compulsion",
+    "Sensitividad Interpersonal" = "Sensitividad_interpersonal",
+    "Hostilidad" = "Hostilidad",
+    "Ideación Paranoide" = "Ideacion_paranoide",
+    "Psicoticismo" = "Psicoticismo",
+    "Percepción de Salud Mental" = "Salud_mental"
+  ),
+  
+  "Calidad de Vida y Estilo de Vida" = c(
+    "Calidad de Vida Total" = "Calidad_de_vida_total",
+    "Calidad de Vida (Psicológica)" = "Calidad_de_vida_dominio_psicologico",
+    "Índice de Calidad de Sueño" = "Indice_calidad_sueno",
+    "Dolor Corporal" = "Dolor_corporal",
+    "Hábitos de Alimentación" = "clasi_ali_es"
+  ),
+  
+  "Tratamientos Médicos" = c(
+    "Uso de Corticoesteroides (Sí/No)" = "uses_corticosteroids",
+    "Tipo de Corticoesteroide" = "Tratamiento_corticoide",
+    "Total de tratamientos" = "total_treatments",
+    "Uso de Antimaláricos" = "Tratamiento_con_antimalaricos",
+    "Uso de Rituximab" = "Tratamiento_con_rituximab"
+  ),
+  
+  "Sociodemográficos y Antecedentes" = c(
+    "Edad" = "Edad",
+    "Sexo" = "Sexo",
+    "Escolaridad" = "Escolaridad",
+    "Ocupación" = "Ocupacion",
+    "Nivel Socioeconómico" = "Nivel_socioeconomico",
+    "Estado de Residencia" = "Estado_de_residencia",
+    "Comorbilidades Adicionales" = "Comorbilidades",
+    "Tiene familiar con LES" = "Tiene_familiar_con_LES"
+  )
+)
+
 # Diccionario completo para el módulo de Neurolupus
 diccionario_neuro_completo <- list(
   
@@ -799,18 +860,33 @@ ui <- page_navbar(
   ),
   
   # Pestaña 2: Modelado Estadístico
+  # Pestaña 2: Modelado Estadístico
   nav_panel(title = "Modelado Estadístico",
             sidebarLayout(
               sidebarPanel(
-                h4("Configuración del Modelo"),
-                selectInput("var_target", "Variable Objetivo (Target):", choices = c("SLEDAI", "Calidad de Vida", "Nefritis Lúpica")),
-                selectInput("var_predict", "Variables Predictoras (Features):", choices = c("Uso de Corticoesteroides", "Tiempo de diagnóstico"), multiple = TRUE),
-                radioButtons("modelo_tipo", "Tipo de Modelo:", choices = c("Regresión Lineal", "Regresión Binomial", "Chi-cuadrada")),
-                actionButton("run_model", "Ejecutar Modelo", class = "btn-primary")
+                h4("Configuración del Modelo General"),
+                
+                # Selección de Variable Objetivo (Target)
+                selectInput("var_target", "Variable Objetivo (Resultado):", 
+                            choices = diccionario_modelado),
+                
+                # Selección de Predictores (Máximo 10)
+                selectizeInput("var_predict", "Variables Predictoras (Máximo 10):", 
+                               choices = diccionario_modelado, 
+                               multiple = TRUE, 
+                               options = list(maxItems = 10)),
+                
+                hr(),
+                actionButton("run_model", "Ejecutar Modelo Estadístico", class = "btn-primary")
               ),
               mainPanel(
-                h3("Resultados del Modelo"),
-                textOutput("txt_reporte_modelo") # Salida de texto reactiva
+                h3("Reporte del Modelo Estructural"),
+                wellPanel(
+                  # Usamos verbatimTextOutput para respetar los saltos de línea (\n)
+                  verbatimTextOutput("txt_reporte_modelo") 
+                ),
+                br(),
+                downloadButton("download_modelo_summary", "Descargar Resumen Técnico (.txt)", class = "btn-success")
               )
             )
   ),
@@ -892,14 +968,120 @@ server <- function(input, output, session) {
     })
   })
   
-  # Lógica Pestaña 2
-  observeEvent(input$run_model, {
-    output$txt_reporte_modelo <- renderText({
-      paste("Ejecutando", input$modelo_tipo, "para predecir", input$var_target, 
-            "utilizando", paste(input$var_predict, collapse = ", "), 
-            ". Aquí se interpretarán los coeficientes y el p-value en formato texto.")
+  # Lógica Pestaña 2: Modelado estasítico
+  # --- Lógica Pestaña 2: Modelado Estadístico ---
+  
+  modelo_general_reactivo <- eventReactive(input$run_model, {
+    req(input$var_target, input$var_predict)
+    
+    # 1. Preparación de datos (Base General completa)
+    df_model <- formated_lupus_data 
+    target_var <- input$var_target
+    pred_vars <- input$var_predict
+    
+    # Prevenir que el usuario ponga la misma variable como target y predictor
+    if(target_var %in% pred_vars) {
+      msg <- "Error: La variable objetivo no puede estar incluida entre las predictoras. Por favor, ajusta tu selección."
+      return(list(texto_humano = msg, texto_tecnico = msg))
+    }
+    
+    all_labels <- unlist(diccionario_modelado)
+    target_label <- names(all_labels)[all_labels == target_var]
+    
+    # 2. Detección del tipo de modelo (Binario vs Continuo)
+    is_binary <- is.factor(df_model[[target_var]]) || length(unique(na.omit(df_model[[target_var]]))) == 2
+    model_type <- if(is_binary) "Regresión Binomial (Logística)" else "Regresión Lineal Múltiple"
+    
+    formula_model <- as.formula(paste(target_var, "~", paste(pred_vars, collapse = " + ")))
+    
+    # 3. Ejecución segura del modelo
+    tryCatch({
+      if(is_binary) {
+        fit <- glm(formula_model, data = df_model, family = "binomial")
+      } else {
+        fit <- lm(formula_model, data = df_model)
+      }
+      
+      n_sujetos <- nobs(fit)
+      stats <- summary(fit)$coefficients
+      r_sq <- if(!is_binary) round(summary(fit)$r.squared * 100, 1) else NA
+      
+      # 4. Redacción del reporte humano
+      reporte_lineas <- c(
+        "### RESUMEN DEL MODELO ESTRUCTURAL GENERAL ###", "",
+        paste("Objetivo: Evaluar el efecto sobre '", target_label, "'.", sep = ""),
+        paste("Muestra: El análisis se ejecutó exitosamente con ", n_sujetos, " sujetos válidos.", sep = ""),
+        paste("Método: Se aplicó una", model_type, "ajustada por", length(pred_vars), "variables principales."), ""
+      )
+      
+      sig_rows <- rownames(stats)[stats[,4] <= 0.05 & rownames(stats) != "(Intercept)"]
+      
+      if(length(sig_rows) > 0) {
+        reporte_lineas <- c(reporte_lineas, "RESULTADOS CLAVE (Variables con significancia p <= 0.05):")
+        
+        for(row in sig_rows) {
+          # Lógica para emparejar variables dummy (factores) con sus nombres originales
+          clean_label <- row
+          for(var_tec in pred_vars) {
+            if(grepl(var_tec, row)) {
+              human_name <- names(all_labels)[all_labels == var_tec]
+              level_name <- gsub(var_tec, "", row) # Extraer el nivel del factor (ej. "Empleado")
+              clean_label <- paste0(human_name, " (", level_name, ")")
+              break
+            }
+          }
+          
+          # En caso de que sea numérica pura y se encuentre directamente
+          if(row %in% all_labels) clean_label <- names(all_labels)[all_labels == row]
+          
+          p_val <- round(stats[row, 4], 4)
+          
+          if(is_binary) {
+            or_val <- round(exp(stats[row, 1]), 2)
+            reporte_lineas <- c(reporte_lineas, paste("- '", clean_label, "': Aumenta la probabilidad ", or_val, " veces (Odds Ratio, p = ", p_val, ").", sep = ""))
+          } else {
+            coeff <- round(stats[row, 1], 2)
+            reporte_lineas <- c(reporte_lineas, paste("- '", clean_label, "': Genera un cambio estimado de ", coeff, " unidades (p = ", p_val, ").", sep = ""))
+          }
+        }
+      } else {
+        reporte_lineas <- c(reporte_lineas, "RESULTADOS: No se detectaron asociaciones estadísticamente significativas para los predictores seleccionados en esta muestra.")
+      }
+      
+      if(!is_binary) reporte_lineas <- c(reporte_lineas, "", paste("AJUSTE: El modelo explica el", r_sq, "% de la variabilidad de la variable objetivo."))
+      
+      # 5. Generar reporte técnico crudo
+      raw_summary <- capture.output(summary(fit))
+      header_tecnico <- c(
+        "==================================================",
+        "REPORTE TÉCNICO DE MODELADO ESTADÍSTICO GENERAL",
+        paste("Fecha de análisis:", Sys.time()),
+        paste("Sujetos incluidos en la muestra (n):", n_sujetos),
+        "==================================================",
+        ""
+      )
+      
+      return(list(
+        texto_humano = paste(reporte_lineas, collapse = "\n"),
+        texto_tecnico = c(header_tecnico, raw_summary)
+      ))
+      
+    }, error = function(e) {
+      msg <- paste("Error en el procesamiento: Los datos no permiten la convergencia del modelo.\nVerifica que no exista multicolinealidad extrema o falta de casos válidos.\nDetalle:", e$message)
+      return(list(texto_humano = msg, texto_tecnico = msg))
     })
   })
+
+  # Renderizar texto en pantalla
+  output$txt_reporte_modelo <- renderText({
+    modelo_general_reactivo()$texto_humano
+  })
+
+  # Descargar output técnico
+  output$download_modelo_summary <- downloadHandler(
+    filename = function() { paste("Resumen_Modelo_General_", Sys.Date(), ".txt", sep = "") },
+    content = function(file) { writeLines(modelo_general_reactivo()$texto_tecnico, file) }
+  )
   
   # Lógica Pestaña 3: Neurolupus
   
