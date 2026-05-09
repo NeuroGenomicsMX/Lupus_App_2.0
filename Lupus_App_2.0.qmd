@@ -837,7 +837,7 @@ sidebarLayout(
   mainPanel(
     h3("Reporte de Análisis Neurocognitivo"),
     wellPanel(
-      textOutput("txt_reporte_neuro_model")
+      verbatimTextOutput("txt_reporte_neuro_model")
     )
   )
 )
@@ -898,93 +898,91 @@ server <- function(input, output, session) {
   
   # Lógica Pestaña 3
   # Dentro de la función server
-  # Dentro de la función server
-observeEvent(input$run_neuro_model, {
-  output$txt_reporte_neuro_model <- renderText({
-    req(input$neuro_target, input$neuro_predictors)
-    
-    # 1. Preparación de datos y etiquetas
-    df_model <- formated_neurolupus_data_02 
-    target_var <- input$neuro_target
-    pred_vars <- input$neuro_predictors
-    
-    # Recuperar nombres legibles para el reporte
-    all_labels <- unlist(diccionario_neuro_completo)
-    target_label <- names(all_labels)[all_labels == target_var]
-    
-    # 2. Detección automática del tipo de modelo
-    is_binary <- is.factor(df_model[[target_var]]) || length(unique(na.omit(df_model[[target_var]]))) == 2
-    model_type <- if(is_binary) "Regresión Binomial (Logística)" else "Regresión Lineal Múltiple"
-    
-    # Construcción de fórmula
-    formula_model <- as.formula(paste(target_var, "~", paste(pred_vars, collapse = " + ")))
-    
-    # 3. Ejecución del Modelo
-    tryCatch({
-      if(is_binary) {
-        fit <- glm(formula_model, data = df_model, family = "binomial")
-        stats <- summary(fit)$coefficients
-      } else {
-        fit <- lm(formula_model, data = df_model)
-        stats <- summary(fit)$coefficients
-        r_sq <- round(summary(fit)$r.squared * 100, 1)
-      }
+    # Dentro de la función server
+  observeEvent(input$run_neuro_model, {
+    output$txt_reporte_neuro_model <- renderText({
+      req(input$neuro_target, input$neuro_predictors)
       
-      # 4. Redacción del Reporte Humano
-      reporte <- paste0("### RESUMEN DEL MODELO ESTRUCTURAL ###\n\n",
-                        "Objetivo: Evaluar el efecto sobre '", 
-                        target_label, 
-                        "'.\n",
-                        "Método: Se aplicó una ", 
-                        model_type, 
-                        " ajustada por ", 
-                        length(pred_vars), 
-                        " variables.\n\n")
+      # 1. Preparación de datos y etiquetas
+      df_model <- formated_neurolupus_data_02 
+      target_var <- input$neuro_target
+      pred_vars <- input$neuro_predictors
       
-      # Evaluación de predictores significativos (p < 0.05)
-      sig_rows <- rownames(stats)[stats[,4] < 0.05 & rownames(stats) != "(Intercept)"]
+      # Recuperar nombres legibles para el reporte
+      all_labels <- unlist(diccionario_neuro_completo)
+      target_label <- names(all_labels)[all_labels == target_var]
       
-      if(length(sig_rows) > 0) {
-        reporte <- paste0(reporte, "RESULTADOS CLAVE:\n")
-        for(row in sig_rows) {
-          clean_label <- names(all_labels)[all_labels == row]
-          p_val <- round(stats[row, 4], 4)
-          
-          if(is_binary) {
-            # Calcular Odds Ratio para modelos binomiales
-            or_val <- round(exp(stats[row, 1]), 2)
-            reporte <- paste0(reporte, 
-                              "- La variable '", 
-                              clean_label, 
-                              "' es significativa (p = ", p_val, 
-                              "). Por cada unidad de incremento, la probabilidad del evento aumenta ", 
-                              or_val, " veces (Odds Ratio).\n")
-          } else {
-            coeff <- round(stats[row, 1], 2)
-            reporte <- paste0(reporte, "- '", 
-                              clean_label, 
-                              "' muestra una asociación significativa (p = ", p_val, 
-                              "). Un aumento en esta variable se traduce en un cambio de ", coeff, 
-                              " unidades en '", target_label, "'.\n")
-          }
+      # 2. Detección automática del tipo de modelo
+      is_binary <- is.factor(df_model[[target_var]]) || length(unique(na.omit(df_model[[target_var]]))) == 2
+      model_type <- if(is_binary) "Regresión Binomial (Logística)" else "Regresión Lineal Múltiple"
+      
+      # Construcción de fórmula
+      formula_model <- as.formula(paste(target_var, "~", paste(pred_vars, collapse = " + ")))
+      
+      # 3. Ejecución del Modelo
+      tryCatch({
+        if(is_binary) {
+          fit <- glm(formula_model, data = df_model, family = "binomial")
+          stats <- summary(fit)$coefficients
+        } else {
+          fit <- lm(formula_model, data = df_model)
+          stats <- summary(fit)$coefficients
+          r_sq <- round(summary(fit)$r.squared * 100, 1)
         }
-      } else {
-        reporte <- paste0(reporte, "RESULTADOS: No se detectaron asociaciones con significancia estadística (p < 0.05) para los predictores seleccionados en esta muestra.\n")
-      }
-      
-      if(!is_binary) {
-        reporte <- paste0(reporte, "\nAJUSTE: El modelo explica el ", r_sq, "% de la variabilidad observada.")
-      }
-      
-      return(reporte)
-      
-    }, error = function(e) {
-      return(paste("Error en el procesamiento: Los datos seleccionados no permiten la convergencia del modelo.",
-                   "Verifique que las variables tengan suficientes casos válidos (N).", e$message))
+        
+        # 4. Redacción del Reporte Humano (almacenando línea por línea)
+        reporte_lineas <- c(
+          "### RESUMEN DEL MODELO ESTRUCTURAL ###",
+          "",
+          paste("Objetivo: Evaluar el efecto sobre '", target_label, "'.", sep = ""),
+          paste("Método: Se aplicó una", model_type, "ajustada por", length(pred_vars), "variables."),
+          ""
+        )
+        
+        # Evaluación de predictores significativos (p < 0.05)
+        sig_rows <- rownames(stats)[stats[,4] < 0.05 & rownames(stats) != "(Intercept)"]
+        
+        if(length(sig_rows) > 0) {
+          reporte_lineas <- c(reporte_lineas, "RESULTADOS CLAVE:")
+          
+          for(row in sig_rows) {
+            clean_label <- names(all_labels)[all_labels == row]
+            p_val <- round(stats[row, 4], 4)
+            
+            if(is_binary) {
+              # Calcular Odds Ratio para modelos binomiales
+              or_val <- round(exp(stats[row, 1]), 2)
+              linea_sig <- paste("- La variable '", clean_label, "' es significativa (p = ", p_val, "). Por cada unidad de incremento, la probabilidad del evento aumenta ", or_val, " veces (Odds Ratio).", sep = "")
+              reporte_lineas <- c(reporte_lineas, linea_sig)
+              
+            } else {
+              coeff <- round(stats[row, 1], 2)
+              linea_sig <- paste("- '", clean_label, "' muestra una asociación significativa (p = ", p_val, "). Un aumento en esta variable se traduce en un cambio de ", coeff, " unidades en '", target_label, "'.", sep = "")
+              reporte_lineas <- c(reporte_lineas, linea_sig)
+            }
+          }
+        } else {
+          reporte_lineas <- c(reporte_lineas, "RESULTADOS: No se detectaron asociaciones con significancia estadística (p < 0.05) para los predictores seleccionados en esta muestra.")
+        }
+        
+        if(!is_binary) {
+          reporte_lineas <- c(reporte_lineas, "", paste("AJUSTE: El modelo explica el", r_sq, "% de la variabilidad observada."))
+        }
+        
+        # Unimos todas las líneas con saltos de línea (\n)
+        return(paste(reporte_lineas, collapse = "\n"))
+        
+      }, error = function(e) {
+        msg_error <- c(
+          "Error en el procesamiento: Los datos seleccionados no permiten la convergencia del modelo.",
+          "Verifique que las variables tengan suficientes casos válidos (N).",
+          paste("Detalle:", e$message)
+        )
+        return(paste(msg_error, collapse = "\n"))
+      })
     })
-  })
-})
-
+  }) 
+  
    # Lógica Pestaña 4
     observeEvent(input$run_gene, {
       output$txt_reporte_gene <- renderText({
