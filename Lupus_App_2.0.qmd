@@ -838,7 +838,10 @@ sidebarLayout(
     h3("Reporte de Análisis Neurocognitivo"),
     wellPanel(
       verbatimTextOutput("txt_reporte_neuro_model")
-    )
+    ),
+    br(), # Un pequeño salto de línea visual
+    # Nuevo botón de descarga para el output técnico
+    downloadButton("download_neuro_summary", "Descargar Resumen Técnico (.txt)", class = "btn-success")
   )
 )
   ),
@@ -877,6 +880,8 @@ sidebarLayout(
 )
 
 # Lógica del Servidor (Server)
+
+# Lógica del Servidor (Server)
 server <- function(input, output, session) {
   
   # Lógica Pestaña 1
@@ -896,110 +901,119 @@ server <- function(input, output, session) {
     })
   })
   
-  # Lógica Pestaña 3
-  # Dentro de la función server
-    # Dentro de la función server
-  observeEvent(input$run_neuro_model, {
-    output$txt_reporte_neuro_model <- renderText({
-      req(input$neuro_target, input$neuro_predictors)
-      
-      # 1. Preparación de datos y etiquetas
-      df_model <- formated_neurolupus_data_02 
-      target_var <- input$neuro_target
-      pred_vars <- input$neuro_predictors
-      
-      # Recuperar nombres legibles para el reporte
-      all_labels <- unlist(diccionario_neuro_completo)
-      target_label <- names(all_labels)[all_labels == target_var]
-      
-      # 2. Detección automática del tipo de modelo
-      is_binary <- is.factor(df_model[[target_var]]) || length(unique(na.omit(df_model[[target_var]]))) == 2
-      model_type <- if(is_binary) "Regresión Binomial (Logística)" else "Regresión Lineal Múltiple"
-      
-      # Construcción de fórmula
-      formula_model <- as.formula(paste(target_var, "~", paste(pred_vars, collapse = " + ")))
-      
-      # 3. Ejecución del Modelo
-      tryCatch({
-        if(is_binary) {
-          fit <- glm(formula_model, data = df_model, family = "binomial")
-          stats <- summary(fit)$coefficients
-        } else {
-          fit <- lm(formula_model, data = df_model)
-          stats <- summary(fit)$coefficients
-          r_sq <- round(summary(fit)$r.squared * 100, 1)
-        }
-        
-        # 4. Redacción del Reporte Humano (almacenando línea por línea)
-        reporte_lineas <- c(
-          "### RESUMEN DEL MODELO ESTRUCTURAL ###",
-          "",
-          paste("Objetivo: Evaluar el efecto sobre '", target_label, "'.", sep = ""),
-          paste("Método: Se aplicó una", model_type, "ajustada por", length(pred_vars), "variables."),
-          ""
-        )
-        
-        # Evaluación de predictores significativos (p < 0.05)
-        sig_rows <- rownames(stats)[stats[,4] < 0.05 & rownames(stats) != "(Intercept)"]
-        
-        if(length(sig_rows) > 0) {
-          reporte_lineas <- c(reporte_lineas, "RESULTADOS CLAVE:")
-          
-          for(row in sig_rows) {
-            clean_label <- names(all_labels)[all_labels == row]
-            p_val <- round(stats[row, 4], 4)
-            
-            if(is_binary) {
-              # Calcular Odds Ratio para modelos binomiales
-              or_val <- round(exp(stats[row, 1]), 2)
-              linea_sig <- paste("- La variable '", clean_label, "' es significativa (p = ", p_val, "). Por cada unidad de incremento, la probabilidad del evento aumenta ", or_val, " veces (Odds Ratio).", sep = "")
-              reporte_lineas <- c(reporte_lineas, linea_sig)
-              
-            } else {
-              coeff <- round(stats[row, 1], 2)
-              linea_sig <- paste("- '", clean_label, "' muestra una asociación significativa (p = ", p_val, "). Un aumento en esta variable se traduce en un cambio de ", coeff, " unidades en '", target_label, "'.", sep = "")
-              reporte_lineas <- c(reporte_lineas, linea_sig)
-            }
-          }
-        } else {
-          reporte_lineas <- c(reporte_lineas, "RESULTADOS: No se detectaron asociaciones con significancia estadística (p < 0.05) para los predictores seleccionados en esta muestra.")
-        }
-        
-        if(!is_binary) {
-          reporte_lineas <- c(reporte_lineas, "", paste("AJUSTE: El modelo explica el", r_sq, "% de la variabilidad observada."))
-        }
-        
-        # Unimos todas las líneas con saltos de línea (\n)
-        return(paste(reporte_lineas, collapse = "\n"))
-        
-      }, error = function(e) {
-        msg_error <- c(
-          "Error en el procesamiento: Los datos seleccionados no permiten la convergencia del modelo.",
-          "Verifique que las variables tengan suficientes casos válidos (N).",
-          paste("Detalle:", e$message)
-        )
-        return(paste(msg_error, collapse = "\n"))
-      })
-    })
-  }) 
+  # Lógica Pestaña 3: Neurolupus
   
-   # Lógica Pestaña 4
-    observeEvent(input$run_gene, {
-      output$txt_reporte_gene <- renderText({
-        paste("Analizando la expresión de los genes:", paste(input$var_gene, collapse = ", "), 
-              "mediante un", input$plot_type, 
-              ". En esta sección se integrará el análisis de cuentas normalizadas o Fold-Change.")
-      })
+  modelo_neuro_reactivo <- eventReactive(input$run_neuro_model, {
+    req(input$neuro_target, input$neuro_predictors)
+    
+    df_model <- formated_neurolupus_data_02 
+    target_var <- input$neuro_target
+    pred_vars <- input$neuro_predictors
+    
+    all_labels <- unlist(diccionario_neuro_completo)
+    target_label <- names(all_labels)[all_labels == target_var]
+    
+    is_binary <- is.factor(df_model[[target_var]]) || length(unique(na.omit(df_model[[target_var]]))) == 2
+    model_type <- if(is_binary) "Regresión Binomial (Logística)" else "Regresión Lineal Múltiple"
+    
+    formula_model <- as.formula(paste(target_var, "~", paste(pred_vars, collapse = " + ")))
+    
+    tryCatch({
+      if(is_binary) {
+        fit <- glm(formula_model, data = df_model, family = "binomial")
+      } else {
+        fit <- lm(formula_model, data = df_model)
+      }
       
-      # Placeholder para la gráfica
-      output$plot_gene <- renderPlot({
-        # Aquí irá la lógica de ggplot2 una vez se carguen los datos de expresión
-      })
+      # 1. Calcular el tamaño de la muestra efectiva (n)
+      n_sujetos <- nobs(fit)
+      
+      stats <- summary(fit)$coefficients
+      r_sq <- if(!is_binary) round(summary(fit)$r.squared * 100, 1) else NA
+      
+      # 2. Redacción del Reporte Humano
+      reporte_lineas <- c(
+        "### RESUMEN DEL MODELO ESTRUCTURAL ###", "",
+        paste("Objetivo: Evaluar el efecto sobre '", target_label, "'.", sep = ""),
+        paste("Muestra: El análisis incluyó a ", n_sujetos, " sujetos.", sep = ""),
+        paste("Método: Se aplicó una", model_type, "ajustada por", length(pred_vars), "variables."), ""
+      )
+      
+      sig_rows <- rownames(stats)[stats[,4] <= 0.05 & rownames(stats) != "(Intercept)"]
+      if(length(sig_rows) > 0) {
+        reporte_lineas <- c(reporte_lineas, "RESULTADOS CLAVE:")
+        for(row in sig_rows) {
+          clean_label <- names(all_labels)[all_labels == row]
+          p_val <- round(stats[row, 4], 4)
+          if(is_binary) {
+            or_val <- round(exp(stats[row, 1]), 2)
+            reporte_lineas <- c(reporte_lineas, paste("- La variable '", clean_label, "' es significativa (p = ", p_val, "). Por cada unidad de incremento, la probabilidad del evento aumenta ", or_val, " veces (Odds Ratio).", sep = ""))
+          } else {
+            coeff <- round(stats[row, 1], 2)
+            reporte_lineas <- c(reporte_lineas, paste("- '", clean_label, "' muestra una asociación significativa (p = ", p_val, "). Un aumento en esta variable se traduce en un cambio de ", coeff, " unidades en '", target_label, "'.", sep = ""))
+          }
+        }
+      } else {
+        reporte_lineas <- c(reporte_lineas, "RESULTADOS: No se detectaron asociaciones con significancia estadística (p <= 0.05) para los predictores seleccionados en esta muestra.")
+      }
+      
+      if(!is_binary) reporte_lineas <- c(reporte_lineas, "", paste("AJUSTE: El modelo explica el", r_sq, "% de la variabilidad observada."))
+      
+      # 3. Preparar el Resumen Técnico con el N de la muestra
+      raw_summary <- capture.output(summary(fit))
+      header_tecnico <- c(
+        "==================================================",
+        "REPORTE TÉCNICO DE NEUROLUPUS",
+        paste("Fecha de análisis:", Sys.time()),
+        paste("Sujetos incluidos en la muestra (n):", n_sujetos),
+        "==================================================",
+        ""
+      )
+      
+      return(list(
+        texto_humano = paste(reporte_lineas, collapse = "\n"),
+        texto_tecnico = c(header_tecnico, raw_summary)
+      ))
+      
+    }, error = function(e) {
+      msg <- paste("Error en el procesamiento: Los datos seleccionados no permiten la convergencia del modelo.\nVerifique que las variables tengan suficientes casos válidos (N).\nDetalle:", e$message)
+      return(list(texto_humano = msg, texto_tecnico = msg))
+    })
+  })
+
+  # --- ¡AQUÍ ESTABAN LAS LÍNEAS FALTANTES! ---
+  
+  # Renderizar el texto en la pantalla de la app
+  output$txt_reporte_neuro_model <- renderText({
+    modelo_neuro_reactivo()$texto_humano
+  })
+
+  # Manejar la descarga del archivo técnico
+  output$download_neuro_summary <- downloadHandler(
+    filename = function() {
+      paste("Resumen_Estadistico_Neurolupus_", Sys.Date(), ".txt", sep = "")
+    },
+    content = function(file) {
+      writeLines(modelo_neuro_reactivo()$texto_tecnico, file)
+    }
+  )
+  
+  # -------------------------------------------
+  
+  # Lógica Pestaña 4
+  observeEvent(input$run_gene, {
+    output$txt_reporte_gene <- renderText({
+      paste("Analizando la expresión de los genes:", paste(input$var_gene, collapse = ", "), 
+            "mediante un", input$plot_type, 
+            ". En esta sección se integrará el análisis de cuentas normalizadas o Fold-Change.")
     })
     
-    
-  }
-
+    # Placeholder para la gráfica
+    output$plot_gene <- renderPlot({
+      # Aquí irá la lógica de ggplot2 una vez se carguen los datos de expresión
+    })
+  })
+}
 
 shinyApp(ui, server)
 
