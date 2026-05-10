@@ -611,7 +611,8 @@ formated_lupus_data <- formated_lupus_data %>%
           Nivel_de_actividad_del_LES=Disease.activity.classification
 )
 
-formated_lupus_data
+formated_lupus_data <- formated_lupus_data %>% 
+  filter(Edad <= 130 & Edad >= 18)
 glimpse(formated_lupus_data)
 ```
 
