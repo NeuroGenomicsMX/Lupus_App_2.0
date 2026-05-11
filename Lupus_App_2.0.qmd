@@ -126,6 +126,57 @@ load_or_install(required_packages)
 
 ### Explanation Pestaña 1
 
+La Pestaña 1 ofrece un reporte general descriptivo del Registro Mexicano
+de Lupus orientado a personas no técnicas. La salida es 100% texto: no
+hay gráficas en esta pestaña.
+
+La persona usuaria:
+
+1. Selecciona una o varias variables del registro que quiere ver
+   descritas. El selector incluye todas las variables relevantes con
+   etiquetas legibles en español; los nombres internos no cambian.
+2. Presiona "Generar reporte" para producir una narrativa.
+
+La aplicación devuelve un reporte narrativo en español sencillo. Cada
+variable se describe de la forma más interpretable posible para
+personas no técnicas, evitando entregar promedios o rangos numéricos
+crudos que no aportan significado clínico:
+
+- **Variables de conteo / tiempo** (edad, años con LES, número de
+  tratamientos): se reportan promedio, mediana y rango porque el
+  promedio sí tiene sentido para estas variables.
+
+- **Índices con umbral clínico validado** (SLEDAI, SLICC, PSQI,
+  calidad de vida WHOQOL, salud mental y dolor SF-36): se reporta el
+  porcentaje de personas en cada categoría clínica definida en el
+  diccionario de variables, no la media. Por ejemplo, SLEDAI ≥ 6 =
+  enfermedad activa; PSQI <5 sin problemas, 5-7 atención médica, 8-14
+  evaluación clínica, ≥15 alteraciones graves.
+
+- **Puntajes SCL-90R** (depresión, ansiedad, somatización, etc.): cada
+  uno tiene un rango validado en el data curating (p. ej. depresión
+  12-60, ansiedad 9-45). Se reportan los terciles del rango teórico de
+  la escala (bajo / intermedio / alto), recordando a la persona que
+  puntajes más altos indican mayor severidad sintomática. No se
+  reportan medias ni rangos numéricos sin contexto.
+
+- **Variables de daño orgánico** (Daño ocular, renal, pulmonar,
+  cardiovascular, cardiomiopatía, vascular periférico, gastrointestinal,
+  musculoesquelético, cutáneo, fallo gonadal prematuro, diabetes,
+  cáncer): según el data curating son **binarias** (1 = presente, 0 =
+  ausente). Se reportan como porcentaje de personas con daño en ese
+  órgano, NO como media numérica.
+
+- **Variables categóricas** (sexo, escolaridad, estado, comorbilidades,
+  tipo de corticoesteroide, etc.): la(s) categoría(s) más frecuente(s)
+  con su porcentaje, y total de personas con respuesta.
+
+- **Variables lógicas (Sí/No)**: proporción de "Sí" del total.
+
+Los valores calculados (porcentajes, conteos, promedios cuando aplican)
+se resaltan visualmente con un fondo amarillo suave para que la persona
+note de un vistazo qué cambia cuando ajusta la selección de variables.
+
 ### Explanation Pestaña 2
 
 ### Explanation Pestaña 3
@@ -611,8 +662,7 @@ formated_lupus_data <- formated_lupus_data %>%
           Nivel_de_actividad_del_LES=Disease.activity.classification
 )
 
-formated_lupus_data <- formated_lupus_data %>% 
-  filter(Edad <= 130 & Edad >= 18)
+formated_lupus_data
 glimpse(formated_lupus_data)
 ```
 
@@ -689,6 +739,61 @@ formated_neurolupus_data_02 <- formated_neurolupus_data %>%
          )
 glimpse(formated_neurolupus_data_02)
 
+```
+
+
+## Pestaña 1: Procesamiento de datos especifico
+
+```{r}
+#| label: Pestaña 1 - Pre-procesamiento de variables de daño orgánico
+# ---------------------------------------------------------------------
+# IMPORTANTE: según data_curating_app_1_2.qmd, las variables de daño
+# orgánico (Ocular, Renal, Pulmonary, Cardiovascular, Cardiomyopathy,
+# Peripheral.vascular, Gastrointestinal, Musculoskeletal, Skin,
+# Premature.gonadal, Diabetes, Malignancy) son INDICADORES BINARIOS
+# (1 = presente, 0 = ausente). En el archivo original llegan como
+# numéricas 0/1, lo que provoca que el reporte las describa con
+# "promedio 0", "min 0", "max 1", una salida no interpretable.
+#
+# Aquí las convertimos a factor con etiquetas "Presente"/"Ausente"
+# SOLO para los efectos de presentación en la Pestaña 1. Los nombres
+# internos de las variables NO cambian, manteniendo la regla sobre inmutabilidad de nombres.
+# ---------------------------------------------------------------------
+
+danio_organico_vars <- c(
+  "Danio_ocular",
+  "Danio_neuropsiquiatrico",
+  "Danio_renal",
+  "Danio_pulmonar",
+  "Danio_cardiovascular",
+  "Danio_cardiomiopatia",
+  "Danio_vascular_periferico",
+  "Danio_gastrointestinal",
+  "Danio_musculoesquletico",
+  "Danio_cutaneo",
+  "Fallo_gonadal_prematuro",
+  "Padece_diabetes",
+  "Presenta_cancer"
+)
+
+# Creamos una copia local del dataset SOLO para la Pestaña 1.
+# El dataset global (formated_lupus_data) sigue intacto para las
+# demás pestañas y modelos.
+datos_pestana1 <- formated_lupus_data %>%
+  mutate(
+    across(
+      all_of(danio_organico_vars),
+      ~ factor(
+          suppressWarnings(as.numeric(.x)),
+          levels = c(0, 1),
+          labels = c("Ausente", "Presente")
+        )
+    )
+  )
+
+glimpse(
+  datos_pestana1 %>% select(all_of(danio_organico_vars))
+)
 ```
 
 
@@ -830,6 +935,86 @@ diccionario_neuro_completo <- list(
   )
 )
 
+# ---------------------------------------------------------------------
+# Diccionario para la Pestaña 1: Reporte General
+# ---------------------------------------------------------------------
+# Cubre todas las variables del dataset renombrado, organizadas en
+# grupos legibles para la persona usuaria. Los nombres internos
+# (lado derecho) NO cambian; solo las etiquetas humanas (lado izquierdo).
+diccionario_reporte_gen <- list(
+
+  "Datos sociodemográficos" = c(
+    "Edad" = "Edad",
+    "Sexo" = "Sexo",
+    "Escolaridad" = "Escolaridad",
+    "Ocupación" = "Ocupacion",
+    "Nivel socioeconómico" = "Nivel_socioeconomico",
+    "Estado de residencia" = "Estado_de_residencia",
+    "Estado de nacimiento" = "Estado_de_nacimiento"
+  ),
+
+  "Historia clínica de LES" = c(
+    "Años viviendo con LES" = "Anios_viviendo_con_LES",
+    "Años de retraso en diagnóstico" = "Anios_retraso_diagnostico",
+    "Nivel de actividad del LES" = "Nivel_de_actividad_del_LES",
+    "Índice SLEDAI (actividad)" = "Sledai",
+    "Índice SLICC (daño acumulado)" = "Slicc",
+    "Comorbilidades" = "Comorbilidades",
+    "Padece diabetes" = "Padece_diabetes",
+    "Presenta cáncer" = "Presenta_cancer"
+  ),
+
+  "Tratamientos" = c(
+    "Resumen de tratamientos" = "treatment_summary",
+    "Número de tratamientos" = "num_treatments",
+    "¿Recibe algún tratamiento?" = "any_treatment",
+    "Número total de tratamientos (incluye corticoide)" = "total_treatments",
+    "Perfil de tratamiento" = "treatment_profile",
+    "¿Usa corticoesteroides?" = "uses_corticosteroids",
+    "Tipo de corticoesteroide" = "Tratamiento_corticoide",
+    "Tratamiento adicional a LES" = "Tratamiento_adicional_a_LES"
+  ),
+
+  "Daño a órganos" = c(
+    "Daño ocular" = "Danio_ocular",
+    "Daño neuropsiquiátrico" = "Danio_neuropsiquiatrico",
+    "Daño renal" = "Danio_renal",
+    "Daño pulmonar" = "Danio_pulmonar",
+    "Daño cardiovascular" = "Danio_cardiovascular",
+    "Daño cardiomiopatía" = "Danio_cardiomiopatia",
+    "Daño vascular periférico" = "Danio_vascular_periferico",
+    "Daño gastrointestinal" = "Danio_gastrointestinal",
+    "Daño musculoesquelético" = "Danio_musculoesquletico",
+    "Daño cutáneo" = "Danio_cutaneo",
+    "Fallo gonadal prematuro" = "Fallo_gonadal_prematuro"
+  ),
+
+  "Salud mental y calidad de vida" = c(
+    "Percepción de salud mental" = "Salud_mental",
+    "Somatización" = "Somatizacion",
+    "Obsesión y compulsión" = "Obsesion_y_compulsion",
+    "Sensitividad interpersonal" = "Sensitividad_interpersonal",
+    "Depresión" = "Depresion",
+    "Ansiedad" = "Ansiedad",
+    "Hostilidad" = "Hostilidad",
+    "Fobia" = "Fobia",
+    "Ideación paranoide" = "Ideacion_paranoide",
+    "Psicoticismo" = "Psicoticismo",
+    "Calidad de vida total" = "Calidad_de_vida_total",
+    "Calidad de vida (dominio psicológico)" = "Calidad_de_vida_dominio_psicologico",
+    "Índice de calidad de sueño" = "Indice_calidad_sueno",
+    "Dolor corporal" = "Dolor_corporal",
+    "Hábitos de alimentación" = "clasi_ali_es"
+  ),
+
+  "Antecedentes familiares" = c(
+    "Tiene familiar con LES" = "Tiene_familiar_con_LES",
+    "Resumen de familiares con LES" = "family_member_sle_summary",
+    "Número de familiares con LES" = "num_family_members_sle",
+    "Familiar de primer grado con LES" = "has_first_degree_sle"
+  )
+)
+
 ```
 
 
@@ -849,14 +1034,28 @@ ui <- page_navbar(
   nav_panel(title = "Reporte General",
             sidebarLayout(
               sidebarPanel(
-                h4("Filtros Generales"),
-                # Aquí irán los selectInput para Edad, Sexo, SLEDAI, etc.
-                selectInput("var_gen", "Selecciona variables:", choices = c("Edad", "Sexo", "Comorbilidades"), multiple = TRUE),
-                actionButton("run_gen", "Generar Reporte", class = "btn-primary")
+                h4("Variables a describir"),
+                helpText(
+                  "Selecciona una o varias variables del registro. ",
+                  "El reporte describe a toda la población del Registro ",
+                  "Mexicano de Lupus para las variables elegidas. ",
+                  "Los valores calculados se resaltan en amarillo."
+                ),
+                selectizeInput(
+                  inputId  = "var_gen",
+                  label    = "Variables:",
+                  choices  = diccionario_reporte_gen,
+                  selected = c("Edad", "Sexo", "Nivel_de_actividad_del_LES"),
+                  multiple = TRUE,
+                  options  = list(
+                    placeholder = "Escribe o elige variables..."
+                  )
+                ),
+                actionButton("run_gen", "Generar reporte", class = "btn-primary")
               ),
               mainPanel(
-                h3("Resumen Descriptivo"),
-                textOutput("txt_reporte_gen") # Salida de texto reactiva
+                h3("Resumen descriptivo del registro"),
+                htmlOutput("txt_reporte_gen")
               )
             )
   ),
@@ -961,13 +1160,555 @@ sidebarLayout(
 # Lógica del Servidor (Server)
 server <- function(input, output, session) {
   
-  # Lógica Pestaña 1
-  observeEvent(input$run_gen, {
-    output$txt_reporte_gen <- renderText({
-      paste("Reporte generado para las variables:", paste(input$var_gen, collapse = ", "), 
-            ". Aquí se insertará la lógica para calcular y redactar promedios, conteos, etc.")
-    })
+  # ==================================================================
+  # Lógica Pestaña 1: Reporte General descriptivo
+  # ==================================================================
+  # Estrategia:
+  # - El reporte describe SIEMPRE al registro completo (sin filtros).
+  # - La persona usuaria elige una o varias variables.
+  # - Para cada variable se produce un párrafo narrativo en español.
+  # - Los valores calculados (porcentajes, conteos, promedios SOLO
+  #   cuando aplican) se resaltan con la etiqueta <mark> de HTML para
+  #   que sean fáciles de identificar visualmente cuando cambia la
+  #   selección.
+  # - htmlOutput permite renderizar el HTML directamente.
+  #
+  # 
+  datos_reporte_gen <- datos_pestana1
+
+  # Diccionario plano (etiqueta humana -> nombre interno)
+  etiquetas_planas_p1 <- unlist(diccionario_reporte_gen, use.names = TRUE)
+  # Inverso para obtener etiqueta humana a partir del nombre interno
+  inv_etiquetas_p1 <- setNames(
+    sub("^[^.]+\\.", "", names(etiquetas_planas_p1)),
+    unname(etiquetas_planas_p1)
+  )
+
+  # ------------------------------------------------------------------
+  # Helper: etiqueta humana para una variable interna
+  # ------------------------------------------------------------------
+  etiqueta_humana_p1 <- function(var_interna) {
+    if (var_interna %in% names(inv_etiquetas_p1)) {
+      inv_etiquetas_p1[[var_interna]]
+    } else {
+      gsub("_", " ", var_interna)
+    }
+  }
+
+  # ------------------------------------------------------------------
+  # Helper: formatear número con separador de miles y 1 decimal cuando aplica
+  # ------------------------------------------------------------------
+  formatear_num <- function(x, digitos = 1) {
+    if (is.na(x)) return("ND")
+    if (x == round(x) && abs(x) < 1e5) {
+      format(x, big.mark = ",", scientific = FALSE)
+    } else {
+      formatC(x, format = "f", digits = digitos, big.mark = ",")
+    }
+  }
+
+  # ------------------------------------------------------------------
+  # Helper: envolver un valor en <mark> para resaltarlo en HTML
+  # ------------------------------------------------------------------
+  resaltar <- function(x) {
+    paste0("<mark style='background-color:#e0c3fc; padding:0 3px; ",
+           "border-radius:3px;'><b>", x, "</b></mark>")
+  }
+
+  # Operador %||% por si no está disponible (R < 4.4)
+  `%||%` <- function(a, b) if (is.null(a)) b else a
+
+  # ==================================================================
+  # CATÁLOGO DE VARIABLES NUMÉRICAS CON INTERPRETACIÓN CLÍNICA
+  # ==================================================================
+  # Tres tipos:
+  #
+  # - "conteo": variables donde el promedio sí tiene sentido (edad,
+  #   años con LES, número de tratamientos). Se reportan promedio,
+  #   mediana y rango.
+  #
+  # - "umbral_simple": un solo umbral validado en el data curating
+  #   (ej. SLEDAI ≥ 6 = activa). Se reporta % por encima del umbral.
+  #
+  # - "categorias_clinicas": el data curating define varios cortes
+  #   clínicos (ej. PSQI <5 / 5-7 / 8-14 / ≥15). Se reporta el % de
+  #   personas en cada categoría clínica.
+  #
+  # - "scl90": puntajes SCL-90R con rango teórico definido. Se reporta
+  #   el % de personas en bajo, intermedio y alto según terciles del
+  #   rango teórico (no del registro). Mayor puntaje = mayor severidad.
+  # ==================================================================
+  catalogo_numerico_p1 <- list(
+    # --- Variables de conteo / tiempo: tiene sentido el promedio ---
+    Edad                          = list(tipo = "conteo", unidad = "años"),
+    Anios_viviendo_con_LES        = list(tipo = "conteo", unidad = "años"),
+    Anios_retraso_diagnostico     = list(tipo = "conteo", unidad = "años"),
+    num_treatments                = list(tipo = "conteo", unidad = "tratamientos"),
+    total_treatments              = list(tipo = "conteo", unidad = "tratamientos"),
+    num_family_members_sle        = list(tipo = "conteo", unidad = "familiares"),
+
+    # --- SLEDAI: umbral validado (>= 6 enfermedad activa) ---
+    Sledai = list(
+      tipo = "umbral_simple",
+      umbral = 6,
+      comparador = ">=",
+      etiqueta_sobre = "presenta enfermedad activa (SLEDAI ≥ 6)",
+      etiqueta_bajo  = "presenta baja actividad o enfermedad inactiva (SLEDAI < 6)"
+    ),
+
+    # --- SLICC: umbral validado (>= 1 con daño acumulado) ---
+    Slicc = list(
+      tipo = "umbral_simple",
+      umbral = 1,
+      comparador = ">=",
+      etiqueta_sobre = "presenta algún daño acumulado (SLICC ≥ 1)",
+      etiqueta_bajo  = "no presenta daño acumulado (SLICC = 0)"
+    ),
+
+    # --- PSQI (cal_glob / Indice_calidad_sueno) ---
+    # Data curating: <5 sin problemas, 5-7 atención médica,
+    # 8-14 evaluación clínica, ≥15 alteraciones graves.
+    Indice_calidad_sueno = list(
+      tipo = "categorias_clinicas",
+      cortes = c(0, 5, 8, 15, Inf),
+      cerrado_izq = TRUE,  # intervalos [a, b)
+      etiquetas = c(
+        "Sin problemas de sueño (PSQI < 5)",
+        "Posible necesidad de atención médica (PSQI 5-7)",
+        "Requiere evaluación clínica (PSQI 8-14)",
+        "Alteraciones graves del sueño (PSQI ≥ 15)"
+      ),
+      nota = "Puntajes más altos indican peor calidad de sueño."
+    ),
+
+    # --- Calidad de vida total (WHOQOL, cal_totalcv) ---
+    # Data curating: > 40 indica alta calidad de vida.
+    Calidad_de_vida_total = list(
+      tipo = "umbral_simple",
+      umbral = 40,
+      comparador = ">",
+      etiqueta_sobre = "reporta alta calidad de vida (WHOQOL > 40)",
+      etiqueta_bajo  = "reporta calidad de vida no alta (WHOQOL ≤ 40)"
+    ),
+
+    # --- Calidad de vida psicológica (WHOQOL, calc_psicologico) ---
+    # Data curating: máximo 24, mayor = mejor satisfacción.
+    # Cortamos en terciles del rango teórico [0, 24].
+    Calidad_de_vida_dominio_psicologico = list(
+      tipo = "categorias_clinicas",
+      cortes = c(0, 8, 16, 24.001),
+      cerrado_izq = TRUE,
+      etiquetas = c(
+        "Baja satisfacción psicológica (0-7)",
+        "Satisfacción psicológica intermedia (8-15)",
+        "Alta satisfacción psicológica (16-24)"
+      ),
+      nota = "Escala WHOQOL (máximo 24): puntajes más altos reflejan mayor satisfacción."
+    ),
+
+    # --- Salud mental SF-36 (salud_mental_trans) ---
+    # Data curating: 0-100, mayor = mejor salud mental percibida.
+    Salud_mental = list(
+      tipo = "categorias_clinicas",
+      cortes = c(0, 34, 67, 100.001),
+      cerrado_izq = TRUE,
+      etiquetas = c(
+        "Salud mental percibida baja (0-33)",
+        "Salud mental percibida intermedia (34-66)",
+        "Salud mental percibida alta (67-100)"
+      ),
+      nota = "Escala SF-36 (0-100): puntajes más altos indican mejor percepción de salud mental."
+    ),
+
+    # --- Dolor corporal SF-36 (dolor_corporal_trans) ---
+    # Data curating: 0-100, mayor = mejor (menos dolor).
+    Dolor_corporal = list(
+      tipo = "categorias_clinicas",
+      cortes = c(0, 34, 67, 100.001),
+      cerrado_izq = TRUE,
+      etiquetas = c(
+        "Dolor corporal alto / mal estado (0-33)",
+        "Dolor corporal intermedio (34-66)",
+        "Sin dolor corporal o leve (67-100)"
+      ),
+      nota = "Escala SF-36 (0-100): puntajes más altos indican menor dolor y mejor estado."
+    ),
+
+    # --- SCL-90R: rangos teóricos del data curating ---
+    # En todos: puntajes más altos = mayor severidad sintomática.
+    Somatizacion = list(
+      tipo = "scl90",
+      rango = c(11, 55),
+      nota = "Escala SCL-90R (11-55): puntajes más altos indican mayor severidad de síntomas somáticos."
+    ),
+    Obsesion_y_compulsion = list(
+      tipo = "scl90",
+      rango = c(7, 35),
+      nota = "Escala SCL-90R (7-35): puntajes más altos indican mayor severidad de síntomas obsesivo-compulsivos."
+    ),
+    Sensitividad_interpersonal = list(
+      tipo = "scl90",
+      rango = c(7, 35),
+      nota = "Escala SCL-90R (7-35): puntajes más altos indican mayor sensitividad interpersonal."
+    ),
+    Depresion = list(
+      tipo = "scl90",
+      rango = c(12, 60),
+      nota = "Escala SCL-90R (12-60): puntajes más altos indican mayor severidad de síntomas depresivos."
+    ),
+    Ansiedad = list(
+      tipo = "scl90",
+      rango = c(9, 45),
+      nota = "Escala SCL-90R (9-45): puntajes más altos indican mayor severidad de síntomas ansiosos."
+    ),
+    Hostilidad = list(
+      tipo = "scl90",
+      rango = c(5, 25),
+      nota = "Escala SCL-90R (5-25): puntajes más altos indican mayor hostilidad."
+    ),
+    Fobia = list(
+      tipo = "scl90",
+      rango = c(3, 15),
+      nota = "Escala SCL-90R (3-15): puntajes más altos indican mayor ansiedad fóbica."
+    ),
+    Ideacion_paranoide = list(
+      tipo = "scl90",
+      rango = c(5, 25),
+      nota = "Escala SCL-90R (5-25): puntajes más altos indican mayor ideación paranoide."
+    ),
+    Psicoticismo = list(
+      tipo = "scl90",
+      rango = c(7, 35),
+      nota = "Escala SCL-90R (7-35): puntajes más altos indican mayor psicoticismo."
+    )
+  )
+
+  # ==================================================================
+  # FUNCIONES DESCRIPTORAS POR TIPO DE VARIABLE
+  # ==================================================================
+
+  # ------------------------------------------------------------------
+  # Variable numérica de tipo "conteo" -> promedio, mediana, rango
+  # ------------------------------------------------------------------
+  describir_conteo <- function(df, var, unidad = "") {
+    valores <- df[[var]]
+    valores <- valores[!is.na(valores)]
+    n <- length(valores)
+    etiqueta <- etiqueta_humana_p1(var)
+    if (n == 0) {
+      return(paste0("<p><b>", etiqueta,
+                    ":</b> no hay datos disponibles en el registro.</p>"))
+    }
+    promedio <- mean(valores)
+    mediana  <- median(valores)
+    minimo   <- min(valores)
+    maximo   <- max(valores)
+    unidad_txt <- if (nzchar(unidad)) paste0(" ", unidad) else ""
+    paste0(
+      "<p><b>", etiqueta, ":</b> ",
+      "Se cuenta con información de ", resaltar(formatear_num(n, 0)),
+      " personas. En promedio son ",
+      resaltar(paste0(formatear_num(promedio, 1), unidad_txt)),
+      " (mediana ", resaltar(paste0(formatear_num(mediana, 1), unidad_txt)),
+      "), con un rango que va de ",
+      resaltar(paste0(formatear_num(minimo, 1), unidad_txt)),
+      " a ", resaltar(paste0(formatear_num(maximo, 1), unidad_txt)), ".</p>"
+    )
+  }
+
+  # ------------------------------------------------------------------
+  # Variable numérica con umbral clínico simple
+  # ------------------------------------------------------------------
+  describir_umbral <- function(df, var, info) {
+    valores <- df[[var]]
+    valores <- valores[!is.na(valores)]
+    n <- length(valores)
+    etiqueta <- etiqueta_humana_p1(var)
+    if (n == 0) {
+      return(paste0("<p><b>", etiqueta,
+                    ":</b> no hay datos disponibles en el registro.</p>"))
+    }
+    sobre <- switch(
+      info$comparador,
+      ">=" = valores >= info$umbral,
+      ">"  = valores >  info$umbral,
+      "<=" = valores <= info$umbral,
+      "<"  = valores <  info$umbral
+    )
+    n_sobre <- sum(sobre)
+    p_sobre <- 100 * n_sobre / n
+    p_bajo  <- 100 - p_sobre
+    paste0(
+      "<p><b>", etiqueta, ":</b> ",
+      "De las ", resaltar(formatear_num(n, 0)),
+      " personas con dato disponible, ",
+      resaltar(paste0(formatear_num(p_sobre, 1), "%")),
+      " (", resaltar(formatear_num(n_sobre, 0)), " personas) ",
+      info$etiqueta_sobre,
+      ", mientras que ",
+      resaltar(paste0(formatear_num(p_bajo, 1), "%")),
+      " ", info$etiqueta_bajo, ".</p>"
+    )
+  }
+
+  # ------------------------------------------------------------------
+  # Variable numérica con varias categorías clínicas validadas
+  # ------------------------------------------------------------------
+  # Toma los cortes definidos en el catálogo y reporta % en cada
+  # categoría clínica. NO reporta media porque no aporta significado
+  # cuando hay categorías clínicas definidas.
+  describir_categorias_clinicas <- function(df, var, info) {
+    valores <- df[[var]]
+    valores <- valores[!is.na(valores)]
+    n <- length(valores)
+    etiqueta <- etiqueta_humana_p1(var)
+    if (n == 0) {
+      return(paste0("<p><b>", etiqueta,
+                    ":</b> no hay datos disponibles en el registro.</p>"))
+    }
+    cortes <- info$cortes
+    etiquetas <- info$etiquetas
+    # Asignamos categoría con findInterval (left.closed = info$cerrado_izq)
+    if (isTRUE(info$cerrado_izq)) {
+      idx <- findInterval(valores, cortes, left.open = FALSE,
+                          rightmost.closed = FALSE)
+    } else {
+      idx <- findInterval(valores, cortes, left.open = TRUE,
+                          rightmost.closed = TRUE)
+    }
+    # idx puede dar 0 si valores < cortes[1] o > length(cortes)-1 si excede;
+    # los recortamos al rango válido y conteamos
+    idx <- pmin(pmax(idx, 1), length(etiquetas))
+    conteos <- vapply(seq_along(etiquetas), function(i) sum(idx == i),
+                      integer(1))
+    porcentajes <- 100 * conteos / n
+    partes <- vapply(seq_along(etiquetas), function(i) {
+      paste0(etiquetas[i], ": ",
+             resaltar(paste0(formatear_num(porcentajes[i], 1), "%")),
+             " (", resaltar(formatear_num(conteos[i], 0)), " personas)")
+    }, character(1))
+    nota_html <- if (!is.null(info$nota)) {
+      paste0(" <small><i>", info$nota, "</i></small>")
+    } else {
+      ""
+    }
+    paste0(
+      "<p><b>", etiqueta, ":</b> ",
+      "De las ", resaltar(formatear_num(n, 0)),
+      " personas con dato disponible, la distribución por categoría clínica es: ",
+      paste(partes, collapse = "; "), ".",
+      nota_html, "</p>"
+    )
+  }
+
+  # ------------------------------------------------------------------
+  # Variable numérica tipo SCL-90R: terciles del rango TEÓRICO
+  # ------------------------------------------------------------------
+  # Usamos el rango oficial de la escala (no del registro). Cortamos
+  # ese rango en tres bandas iguales: bajo / intermedio / alto.
+  describir_scl90 <- function(df, var, info) {
+    valores <- df[[var]]
+    valores <- valores[!is.na(valores)]
+    n <- length(valores)
+    etiqueta <- etiqueta_humana_p1(var)
+    if (n == 0) {
+      return(paste0("<p><b>", etiqueta,
+                    ":</b> no hay datos disponibles en el registro.</p>"))
+    }
+    rmin <- info$rango[1]
+    rmax <- info$rango[2]
+    paso <- (rmax - rmin) / 3
+    c1 <- rmin + paso
+    c2 <- rmin + 2 * paso
+    cortes <- c(rmin, c1, c2, rmax + 0.001)
+    idx <- findInterval(valores, cortes, left.open = FALSE,
+                        rightmost.closed = FALSE)
+    idx <- pmin(pmax(idx, 1), 3)
+    n_bajo  <- sum(idx == 1)
+    n_med   <- sum(idx == 2)
+    n_alto  <- sum(idx == 3)
+    p_bajo  <- 100 * n_bajo / n
+    p_med   <- 100 * n_med  / n
+    p_alto  <- 100 * n_alto / n
+    nota_html <- if (!is.null(info$nota)) {
+      paste0(" <small><i>", info$nota, "</i></small>")
+    } else {
+      ""
+    }
+    paste0(
+      "<p><b>", etiqueta, ":</b> ",
+      "De las ", resaltar(formatear_num(n, 0)),
+      " personas con dato disponible: ",
+      "severidad baja (",
+      formatear_num(rmin, 0), "-", formatear_num(c1, 0), "): ",
+      resaltar(paste0(formatear_num(p_bajo, 1), "%")),
+      " (", resaltar(formatear_num(n_bajo, 0)), " personas); ",
+      "severidad intermedia (",
+      formatear_num(c1, 0), "-", formatear_num(c2, 0), "): ",
+      resaltar(paste0(formatear_num(p_med, 1), "%")),
+      " (", resaltar(formatear_num(n_med, 0)), " personas); ",
+      "severidad alta (",
+      formatear_num(c2, 0), "-", formatear_num(rmax, 0), "): ",
+      resaltar(paste0(formatear_num(p_alto, 1), "%")),
+      " (", resaltar(formatear_num(n_alto, 0)), " personas).",
+      nota_html, "</p>"
+    )
+  }
+
+  # ------------------------------------------------------------------
+  # Despachador para variables numéricas
+  # ------------------------------------------------------------------
+  # Si la variable NO está catalogada y es numérica, se trata como
+  # conteo simple 
+  describir_numerica <- function(df, var) {
+    info <- catalogo_numerico_p1[[var]]
+    if (is.null(info)) {
+      return(describir_conteo(df, var, unidad = ""))
+    }
+    switch(
+      info$tipo,
+      "conteo"               = describir_conteo(df, var, unidad = info$unidad %||% ""),
+      "umbral_simple"        = describir_umbral(df, var, info),
+      "categorias_clinicas"  = describir_categorias_clinicas(df, var, info),
+      "scl90"                = describir_scl90(df, var, info),
+      describir_conteo(df, var, unidad = "")  # fallback
+    )
+  }
+
+  # ------------------------------------------------------------------
+  # Variable lógica (Sí/No)
+  # ------------------------------------------------------------------
+  describir_logica <- function(df, var) {
+    valores <- df[[var]]
+    valores <- valores[!is.na(valores)]
+    n <- length(valores)
+    etiqueta <- etiqueta_humana_p1(var)
+    if (n == 0) {
+      return(paste0("<p><b>", etiqueta,
+                    ":</b> no hay datos disponibles en el registro.</p>"))
+    }
+    n_si  <- sum(valores == TRUE)
+    p_si  <- 100 * n_si / n
+    paste0(
+      "<p><b>", etiqueta, ":</b> ",
+      "De las ", resaltar(formatear_num(n, 0)),
+      " personas con dato disponible, ",
+      resaltar(formatear_num(n_si, 0)),
+      " responden \"Sí\", lo que equivale al ",
+      resaltar(paste0(formatear_num(p_si, 1), "%")),
+      " del total.</p>"
+    )
+  }
+
+  # ------------------------------------------------------------------
+  # Variable categórica / factor / texto
+  # ------------------------------------------------------------------
+  # Las variables de daño orgánico
+  # son factores "Ausente"/"Presente" (ver bloque de pre-procesamiento
+  # de Pestaña 1). Para ese tipo de variable binaria con etiqueta
+  # "Presente" preferimos un mensaje específico: "X% presenta daño".
+  describir_categorica <- function(df, var) {
+    valores <- df[[var]]
+    valores <- valores[!is.na(valores) & valores != ""]
+    n <- length(valores)
+    etiqueta <- etiqueta_humana_p1(var)
+    if (n == 0) {
+      return(paste0("<p><b>", etiqueta,
+                    ":</b> no hay datos disponibles en el registro.</p>"))
+    }
+    tabla <- sort(table(valores), decreasing = TRUE)
+    niveles <- names(tabla)
+
+    # Caso especial: variable de daño orgánico (binaria Presente/Ausente)
+    # devuelve un mensaje clínico directo.
+    if (var %in% danio_organico_vars &&
+        all(niveles %in% c("Presente", "Ausente"))) {
+      n_pres <- as.integer(tabla["Presente"] %||% 0)
+      p_pres <- 100 * n_pres / n
+      p_aus  <- 100 - p_pres
+      return(paste0(
+        "<p><b>", etiqueta, ":</b> ",
+        "De las ", resaltar(formatear_num(n, 0)),
+        " personas con dato disponible, ",
+        resaltar(paste0(formatear_num(p_pres, 1), "%")),
+        " (", resaltar(formatear_num(n_pres, 0)), " personas) ",
+        "presenta esta afectación, mientras que ",
+        resaltar(paste0(formatear_num(p_aus, 1), "%")),
+        " no la presenta.</p>"
+      ))
+    }
+
+    # Caso general: top 3 categorías
+    top_n <- min(3, length(tabla))
+    partes <- vapply(seq_len(top_n), function(i) {
+      categoria <- names(tabla)[i]
+      conteo <- as.integer(tabla[i])
+      pct <- 100 * conteo / n
+      paste0("\"", categoria, "\" con ",
+             resaltar(paste0(formatear_num(pct, 1), "%")),
+             " (", resaltar(formatear_num(conteo, 0)), " personas)")
+    }, character(1))
+    encabezado <- if (top_n == 1) {
+      "La única categoría observada es "
+    } else {
+      "Las categorías más frecuentes son: "
+    }
+    paste0(
+      "<p><b>", etiqueta, ":</b> ",
+      "Se cuenta con información de ", resaltar(formatear_num(n, 0)),
+      " personas. ", encabezado,
+      paste(partes, collapse = "; "), ".</p>"
+    )
+  }
+
+  # ------------------------------------------------------------------
+  # Despachador principal: elige función según la clase de la variable
+  # ------------------------------------------------------------------
+  describir_variable <- function(df, var) {
+    if (!var %in% names(df)) {
+      return(paste0("<p><i>La variable <b>", var,
+                    "</b> no está disponible en el registro.</i></p>"))
+    }
+    x <- df[[var]]
+    if (is.logical(x)) {
+      describir_logica(df, var)
+    } else if (is.numeric(x)) {
+      describir_numerica(df, var)
+    } else {
+      describir_categorica(df, var)
+    }
+  }
+
+  # ------------------------------------------------------------------
+  # Reporte reactivo: se recalcula al presionar "Generar reporte"
+  # ------------------------------------------------------------------
+  reporte_general_reactivo <- eventReactive(input$run_gen, {
+    req(input$var_gen)
+    vars <- input$var_gen
+    n_total <- nrow(datos_reporte_gen)
+
+    encabezado <- paste0(
+      "<p>Este reporte describe a la población del ",
+      "<b>Registro Mexicano de Lupus</b>, que incluye un total de ",
+      resaltar(formatear_num(n_total, 0)),
+      " personas participantes. A continuación se presentan las ",
+      resaltar(formatear_num(length(vars), 0)),
+      " variable(s) que seleccionaste:</p>"
+    )
+
+    bloques <- vapply(
+      vars,
+      function(v) describir_variable(datos_reporte_gen, v),
+      character(1)
+    )
+
+    paste0(encabezado, paste(bloques, collapse = ""))
   })
+
+  output$txt_reporte_gen <- renderUI({
+    HTML(reporte_general_reactivo())
+  })
+
   
   # --- Lógica Pestaña 2: Modelado Estadístico ---
   
@@ -1259,7 +2000,3 @@ server <- function(input, output, session) {
 shinyApp(ui, server)
 
 ```
-
-
-
-
