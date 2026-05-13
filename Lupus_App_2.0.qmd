@@ -7,6 +7,7 @@ author: "Dris Sánchez,
          Grecia Sevilla,
          Fernanda Bravo,  
          Itzel Olivares,
+         Luis Aguilar,
          Domingo Martínez"
 toc: true # Activate table of contents
 toc-depth: 3 # Table of contents depth
@@ -190,8 +191,8 @@ note de un vistazo qué cambia cuando ajusta la selección de variables.
 ```{r}
 #| label: Load dataset
 
-path = "Lupus_App_dataset.csv"
-path_2 = "Personas_escaneadas_Lupus_Base_NeurolupusApp.csv"
+path = "Data/base_de_datos_sin_registros_duplicados_ LupusProjectProducti_DATA_2026-05-11_2035.csv sin_col_vacias_con_suma_SLICC_SLEDAI_pred_dosis_categ_dx_time_curado.csv"
+path_2 = "Data/Personas_escaneadas_Lupus_Base_NeurolupusApp.csv"
 
 load_lupus_data <- function(path) {
   raw_data <- read_csv(path, show_col_types = FALSE)
@@ -215,7 +216,87 @@ lupus_data_2 <- load_lupus_data(path_2)
 ## Formating datasets
 
 ```{r}
+#| label: Selecting variables
+lupus_data <- lupus_data %>% 
+  select(
+    dx_time,
+    time_symptoms,
+    scl90r_score_som,
+    scl90r_score_oc,
+    scl90r_score_si,
+    scl90r_score_dep,
+    scl90r_score_ans,
+    scl90r_score_hos,
+    scl90r_score_fob,
+    scl90r_score_para,
+    sci90r_score_psi,
+    family_sle,
+    clasi_ali,
+    salud_mental_trans,
+    calc_psicologico,
+    cal_totalcv,
+    comorbidities,
+    aditional_treatment,
+    prednisolona,
+    socioeconomic_status,
+    ocupation,
+    school,
+    home,
+    calculated_age,
+    cal_glob,
+    dolor_corporal_trans,
+    record_id,
+    sex___1,
+    place_of_birth,
+    treatment___0,
+    treatment___1,
+    treatment___2,
+    treatment___3,
+    treatment___4,
+    treatment___5,
+    treatment___6,
+    treatment___7,
+    treatment___8,
+    family_member_sle___0,
+    family_member_sle___1,
+    family_member_sle___2,
+    family_member_sle___3,
+    family_member_sle___4,
+    family_member_sle___5,
+    family_member_sle___6,
+    family_member_sle___7,
+    family_member_sle___8,
+    Ocular,
+    Neuropsychiatric,
+    Renal,
+    Pulmonary,
+    Cardiovascular,
+    Cardiomyopathy,
+    `Peripheral vascular`,
+    Gastrointestinal,
+    Musculoskeletal,
+    Skin,
+    `Premature gonadal`,
+    Diabetes,
+    Malignancy,
+    `total slicc`,
+    `total sledai`,
+    `Disease activity classification`
+  ) %>% 
+  na.omit()
+```
+
+```{r}
 #| label: Formating dataset 01
+
+lupus_data <- lupus_data %>% 
+  rename(
+    total.slicc = `total slicc`,
+    total.sledai = `total sledai`,
+    Disease.activity.classification = `Disease activity classification`,
+    Peripheral.vascular = `Peripheral vascular`,
+    Premature.gonadal = `Premature gonadal`
+  )
 
 formated_lupus_data <- lupus_data %>% 
   mutate(
