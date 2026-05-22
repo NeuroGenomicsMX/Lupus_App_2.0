@@ -1,15 +1,4 @@
-# title: "Lupus App 2.0,
-#        Building accessible resources to empower communities: 
-#        the case of the Lupus Mexican Registry"
-# author: "Dris Sánchez, 
-#         Anita Ledesma,
-#         Grecia Sevilla,
-#         Fernanda Bravo,  
-#         Itzel Olivares,
-#         Luis Aguilar,
-#         Domingo Martínez"
-
-## ----setup, include=FALSE----------------------------------------------------------------------
+## ----setup, include=FALSE--------------------------------------------------------------------
 # Packages used in the project
 required_packages <- c(
   "tidyverse",
@@ -31,7 +20,7 @@ load_or_install <- function(packages) {
 load_or_install(required_packages)
 
 
-## ----------------------------------------------------------------------------------------------
+## --------------------------------------------------------------------------------------------
 #| label: Load dataset
 
 path = "Data/base_de_datos_sin_registros_duplicados_ LupusProjectProducti_DATA_2026-05-11_2035.csv sin_col_vacias_con_suma_SLICC_SLEDAI_pred_dosis_categ_dx_time_curado.csv"
@@ -56,7 +45,7 @@ lupus_data_2 <- load_lupus_data(path_2)
 
 
 
-## ----------------------------------------------------------------------------------------------
+## --------------------------------------------------------------------------------------------
 #| label: Selecting variables
 lupus_data <- lupus_data %>% 
   select(
@@ -127,7 +116,7 @@ lupus_data <- lupus_data %>%
   na.omit()
 
 
-## ----------------------------------------------------------------------------------------------
+## --------------------------------------------------------------------------------------------
 #| label: Formating dataset 01
 
 lupus_data <- lupus_data %>% 
@@ -441,7 +430,7 @@ formated_lupus_data <- formated_lupus_data %>%
 glimpse(formated_lupus_data)
 
 
-## ----------------------------------------------------------------------------------------------
+## --------------------------------------------------------------------------------------------
 #| label: Formatind Dataset 02
 glimpse(lupus_data_2)
 lupus_data_2 <- lupus_data_2 %>% 
@@ -512,7 +501,7 @@ glimpse(formated_lupus_data_2)
 
 
 
-## ----------------------------------------------------------------------------------------------
+## --------------------------------------------------------------------------------------------
 #| label: Renaming variables
 
 formated_lupus_data <- formated_lupus_data %>%
@@ -585,7 +574,7 @@ formated_lupus_data
 glimpse(formated_lupus_data)
 
 
-## ----------------------------------------------------------------------------------------------
+## --------------------------------------------------------------------------------------------
 #| label: Joint Neurolupus Dataset
 
 # Unimos la base de datos de neuroimagen con los datos clínicos generales
@@ -658,7 +647,7 @@ glimpse(formated_neurolupus_data_02)
 
 
 
-## ----------------------------------------------------------------------------------------------
+## --------------------------------------------------------------------------------------------
 #| label: Pestaña 1 - Pre-procesamiento de variables de daño orgánico
 # ---------------------------------------------------------------------
 # IMPORTANTE: según data_curating_app_1_2.qmd, las variables de daño
@@ -710,7 +699,7 @@ glimpse(
 )
 
 
-## ----------------------------------------------------------------------------------------------
+## --------------------------------------------------------------------------------------------
 #| label: Neurolupus dictionary
 
 # Diccionario general para el módulo de Modelado Estadístico
@@ -928,7 +917,7 @@ diccionario_reporte_gen <- list(
 
 
 
-## ----------------------------------------------------------------------------------------------
+## --------------------------------------------------------------------------------------------
 #| label: Lupus App
 
 # Procesamiento de datos
@@ -936,7 +925,36 @@ diccionario_reporte_gen <- list(
 # Interfaz de Usuario (UI)
 ui <- page_navbar(
   title = "LupusRGMX Data App",
-  theme = bs_theme(version = 5, bootswatch = "flatly"),
+  # Tema personalizado "Sitio Hermano LupusRGMX"
+  theme = bs_theme(
+    version = 5,
+    bg = "#FAFAFA",         
+    fg = "#2D2D2D",         
+    primary = "#5A2A7A",    # Morado oscuro del logo oficial
+    secondary = "#D1C4E9",  
+    success = "#D1C4E9",    # <-- NUEVO: Dorado/Ámbar (Contraste perfecto para descargas/links)
+    
+    base_font = font_google("Open Sans"), 
+    heading_font = font_google("Montserrat") 
+  ),
+  
+  tags$head(
+    tags$style(HTML("
+      .navbar-nav .nav-link {
+        color: #FFFFFF !important;    /* Texto blanco en los inactivos */
+        opacity: 0.8 !important;     /* Ligeramente transparente pero muy legible */
+        font-weight: 500;            /* Un poco más de grosor para que resalten */
+      }
+      .navbar-nav .nav-link.active {
+        opacity: 1 !important;       /* El activo se mantiene al 100% */
+        font-weight: 700;            /* El activo se pone en negrita */
+      }
+    "))
+  ),
+  
+  # Esto fuerza a que la barra de navegación superior tome el color "primary"
+  bg = "#5A2A7A",
+  
   
   # Pestaña 1: Reporte General
   nav_panel(title = "Reporte General",
@@ -947,7 +965,7 @@ ui <- page_navbar(
                   "Selecciona una o varias variables del registro. ",
                   "El reporte describe a toda la población del Registro ",
                   "Mexicano de Lupus para las variables elegidas. ",
-                  "Los valores calculados se resaltan en amarillo."
+                  "Los valores calculados se resaltan en morado."
                 ),
                 selectizeInput(
                   inputId  = "var_gen",
@@ -1032,27 +1050,7 @@ sidebarLayout(
   ),
   
   
-  # Pestaña 4: Expresión Génica
-  nav_panel(title = "Expresión Génica",
-            sidebarLayout(
-              sidebarPanel(
-                h4("Análisis Transcriptómico"),
-                selectInput("var_gene", "Selecciona Gene(s):", 
-                            choices = c("IFNIT", "STAT1", "OAS1", "MX1"), 
-                            multiple = TRUE),
-                radioButtons("plot_type", "Tipo de visualización:", 
-                             choices = c("Boxplot de Expresión", "Volcano Plot", "Heatmap")),
-                actionButton("run_gene", "Analizar Expresión", class = "btn-primary")
-              ),
-              mainPanel(
-                h3("Resultados de Expresión Diferencial"),
-                textOutput("txt_reporte_gene"), # Salida de texto
-                plotOutput("plot_gene")        # Espacio para gráfica futura
-              )
-            )
-  ),
-  
-  # Pestaña 5: Acceso a Datos
+  # Pestaña 4: Acceso a Datos
   nav_panel(title = "Acceso a Datos Crudos",
             div(class = "container mt-5",
                 h2("Solicitud de Datos"),
@@ -1907,4 +1905,11 @@ server <- function(input, output, session) {
 
 shinyApp(ui, server)
 
+
+
+## --------------------------------------------------------------------------------------------
+library(knitr)
+# | label: Transform to R format
+knitr::purl("Lupus_App_2.0.qmd",
+            output = "Server_LupusApp_2.0.R")
 
