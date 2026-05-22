@@ -1905,11 +1905,3 @@ server <- function(input, output, session) {
 
 shinyApp(ui, server)
 
-
-
-## --------------------------------------------------------------------------------------------
-library(knitr)
-# | label: Transform to R format
-knitr::purl("Lupus_App_2.0.qmd",
-            output = "Server_LupusApp_2.0.R")
-
