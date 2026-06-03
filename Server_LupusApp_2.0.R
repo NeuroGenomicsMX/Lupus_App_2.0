@@ -1051,7 +1051,7 @@ sidebarLayout(
   
   
   # Pestaña 4: Acceso a Datos
-  nav_panel(title = "Acceso a Datos Crudos",
+  nav_panel(title = "Acceso a Datos",
             div(class = "container mt-5",
                 h2("Solicitud de Datos"),
                 p("Los datos crudos de este estudio se encuentran resguardados para proteger la privacidad de las y los participantes."),
