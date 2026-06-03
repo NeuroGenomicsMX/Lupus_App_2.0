@@ -175,7 +175,7 @@ crudos que no aportan significado clínico:
 - **Variables lógicas (Sí/No)**: proporción de "Sí" del total.
 
 Los valores calculados (porcentajes, conteos, promedios cuando aplican)
-se resaltan visualmente con un fondo amarillo suave para que la persona
+se resaltan visualmente con un fondo morado suave para que la persona
 note de un vistazo qué cambia cuando ajusta la selección de variables.
 
 ### Explanation Pestaña 2
@@ -183,8 +183,6 @@ note de un vistazo qué cambia cuando ajusta la selección de variables.
 ### Explanation Pestaña 3
 
 ### Explanation Pestaña 4
-
-### Explanation Pestaña 5
 
 ## Loading datasets
 
@@ -1109,7 +1107,36 @@ diccionario_reporte_gen <- list(
 # Interfaz de Usuario (UI)
 ui <- page_navbar(
   title = "LupusRGMX Data App",
-  theme = bs_theme(version = 5, bootswatch = "flatly"),
+  # Tema personalizado "Sitio Hermano LupusRGMX"
+  theme = bs_theme(
+    version = 5,
+    bg = "#FAFAFA",         
+    fg = "#2D2D2D",         
+    primary = "#5A2A7A",    # Morado oscuro del logo oficial
+    secondary = "#D1C4E9",  
+    success = "#D1C4E9",    # <-- NUEVO: Dorado/Ámbar (Contraste perfecto para descargas/links)
+    
+    base_font = font_google("Open Sans"), 
+    heading_font = font_google("Montserrat") 
+  ),
+  
+  tags$head(
+    tags$style(HTML("
+      .navbar-nav .nav-link {
+        color: #FFFFFF !important;    /* Texto blanco en los inactivos */
+        opacity: 0.8 !important;     /* Ligeramente transparente pero muy legible */
+        font-weight: 500;            /* Un poco más de grosor para que resalten */
+      }
+      .navbar-nav .nav-link.active {
+        opacity: 1 !important;       /* El activo se mantiene al 100% */
+        font-weight: 700;            /* El activo se pone en negrita */
+      }
+    "))
+  ),
+  
+  # Esto fuerza a que la barra de navegación superior tome el color "primary"
+  bg = "#5A2A7A",
+  
   
   # Pestaña 1: Reporte General
   nav_panel(title = "Reporte General",
@@ -1120,7 +1147,7 @@ ui <- page_navbar(
                   "Selecciona una o varias variables del registro. ",
                   "El reporte describe a toda la población del Registro ",
                   "Mexicano de Lupus para las variables elegidas. ",
-                  "Los valores calculados se resaltan en amarillo."
+                  "Los valores calculados se resaltan en morado."
                 ),
                 selectizeInput(
                   inputId  = "var_gen",
@@ -1205,28 +1232,8 @@ sidebarLayout(
   ),
   
   
-  # Pestaña 4: Expresión Génica
-  nav_panel(title = "Expresión Génica",
-            sidebarLayout(
-              sidebarPanel(
-                h4("Análisis Transcriptómico"),
-                selectInput("var_gene", "Selecciona Gene(s):", 
-                            choices = c("IFNIT", "STAT1", "OAS1", "MX1"), 
-                            multiple = TRUE),
-                radioButtons("plot_type", "Tipo de visualización:", 
-                             choices = c("Boxplot de Expresión", "Volcano Plot", "Heatmap")),
-                actionButton("run_gene", "Analizar Expresión", class = "btn-primary")
-              ),
-              mainPanel(
-                h3("Resultados de Expresión Diferencial"),
-                textOutput("txt_reporte_gene"), # Salida de texto
-                plotOutput("plot_gene")        # Espacio para gráfica futura
-              )
-            )
-  ),
-  
-  # Pestaña 5: Acceso a Datos
-  nav_panel(title = "Acceso a Datos Crudos",
+  # Pestaña 4: Acceso a Datos
+  nav_panel(title = "Acceso a Datos",
             div(class = "container mt-5",
                 h2("Solicitud de Datos"),
                 p("Los datos crudos de este estudio se encuentran resguardados para proteger la privacidad de las y los participantes."),
@@ -2081,3 +2088,10 @@ server <- function(input, output, session) {
 shinyApp(ui, server)
 
 ```
+
+```{r}
+library(knitr)
+# | label: Transform to R format
+#knitr::purl("Lupus_App_2.0.qmd", output = "Server_LupusApp_2.0.R")
+```
+
