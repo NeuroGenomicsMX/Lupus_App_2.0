@@ -1,4 +1,4 @@
-## ----setup, include=FALSE-------------------------------------------
+## ----setup, include=FALSE----------------------------------
 # Packages used in the project
 required_packages <- c(
   "tidyverse",
@@ -20,7 +20,7 @@ load_or_install <- function(packages) {
 load_or_install(required_packages)
 
 
-## -------------------------------------------------------------------
+## ----------------------------------------------------------
 #| label: Load dataset
 
 path = "Data/base_de_datos_sin_registros_duplicados_ LupusProjectProducti_DATA_2026-05-11_2035.csv sin_col_vacias_con_suma_SLICC_SLEDAI_pred_dosis_categ_dx_time_curado.csv"
@@ -45,7 +45,7 @@ lupus_data_2 <- load_lupus_data(path_2)
 
 
 
-## -------------------------------------------------------------------
+## ----------------------------------------------------------
 #| label: Selecting variables
 
 # Filter age
@@ -121,7 +121,7 @@ lupus_data <- lupus_data %>%
   na.omit()
 
 
-## -------------------------------------------------------------------
+## ----------------------------------------------------------
 #| label: Formating dataset 01
 
 lupus_data <- lupus_data %>% 
@@ -426,7 +426,7 @@ formated_lupus_data <- formated_lupus_data %>%
 glimpse(formated_lupus_data)
 
 
-## -------------------------------------------------------------------
+## ----------------------------------------------------------
 #| label: Formatind Dataset 02
 glimpse(lupus_data_2)
 lupus_data_2 <- lupus_data_2 %>% 
@@ -497,7 +497,7 @@ glimpse(formated_lupus_data_2)
 
 
 
-## -------------------------------------------------------------------
+## ----------------------------------------------------------
 #| label: Renaming variables
 
 formated_lupus_data <- formated_lupus_data %>%
@@ -570,7 +570,7 @@ formated_lupus_data
 glimpse(formated_lupus_data)
 
 
-## -------------------------------------------------------------------
+## ----------------------------------------------------------
 #| label: Joint Neurolupus Dataset
 
 # Unimos la base de datos de neuroimagen con los datos clínicos generales
@@ -637,13 +637,14 @@ formated_neurolupus_data_02 <- formated_neurolupus_data %>%
          Danio_cardiovascular,
          Danio_vascular_periferico,
          Slicc,
-         Sledai
+         Sledai,
+         Actividad_del_LES
          )
 glimpse(formated_neurolupus_data_02)
 
 
 
-## -------------------------------------------------------------------
+## ----------------------------------------------------------
 #| label: Pestaña 1 - Pre-procesamiento de variables de daño orgánico
 # ---------------------------------------------------------------------
 # IMPORTANTE: según data_curating_app_1_2.qmd, las variables de daño
@@ -695,7 +696,7 @@ glimpse(
 )
 
 
-## -------------------------------------------------------------------
+## ----------------------------------------------------------
 #| label: Neurolupus dictionary
 
 # Diccionario general para el módulo de Modelado Estadístico
@@ -703,7 +704,7 @@ diccionario_modelado <- list(
   
   "Actividad y Daño de la Enfermedad" = c(
     "Puntaje SLEDAI (Actividad Continua)" = "Sledai",
-    "Actividad del LES (Categórica)" = "Nivel_de_actividad_del_LES",
+    "Actividad del LES (Categórica)" = "Actividad_del_LES",
     "Puntaje SLICC (Daño Acumulado)" = "Slicc",
     "Años viviendo con LES" = "Anios_viviendo_con_LES",
     "Años de retraso en diagnóstico" = "Anios_retraso_diagnostico"
@@ -804,6 +805,7 @@ diccionario_neuro_completo <- list(
   
   "Actividad y Daño Acumulado" = c(
     "Puntaje SLEDAI (Actividad)" = "Sledai",
+    "Actividad del LES (Categórica)" = "Actividad_del_LES",
     "Puntaje SLICC (Daño Total)" = "Slicc",
     "Daño Neuropsiquiátrico" = "Danio_neuropsiquiatrico",
     "Daño Cardiovascular" = "Danio_cardiovascular",
@@ -913,7 +915,7 @@ diccionario_reporte_gen <- list(
 
 
 
-## -------------------------------------------------------------------
+## ----------------------------------------------------------
 #| label: Lupus App
 
 # Procesamiento de datos
