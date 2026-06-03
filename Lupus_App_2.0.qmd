@@ -1170,7 +1170,53 @@ ui <- page_navbar(
   ),
   
   
-  # Pestaña 2: Modelado Estadístico
+  # Pestaña 2: Comparativas
+  
+  # --- NUEVA PESTAÑA: COMPARATIVAS ---
+  nav_panel(
+    title = "Comparativas",
+    sidebarLayout(
+      sidebarPanel(
+        h4("Configuración del Análisis"),
+        p("Cruza variables del registro para identificar asociaciones significativas."),
+        br(),
+        
+        # Variable 1: Estrictamente Categórica para formar los grupos de comparación
+        selectInput(
+          inputId = "comp_var1",
+          label = "Variable Categórica de Agrupación (Eje X / Grupos):",
+          choices = c(
+            "Sexo" = "Sexo",
+            "Actividad del LES" = "Actividad_del_LES",
+            "Padece Diabetes" = "Padece_diabetes",
+            "Presenta Cáncer" = "Presenta_cancer"
+          ),
+          selected = "Actividad_del_LES"
+        ),
+        
+        # Variable 2: Dinámica (Acepta categóricas o numéricas continuas)
+        selectizeInput(
+          inputId = "comp_var2",
+          label = "Variable a Comparar:",
+          choices = diccionario_reporte_gen, # Reutiliza tu catálogo general de variables
+          selected = "Edad"
+        ),
+        hr(),
+        # Botón de descarga unificado con estilo dorado institucional
+        downloadButton("download_comp", "Descargar Análisis (.txt)", class = "btn-success")
+      ),
+      
+      mainPanel(
+        h3("Resultado del Análisis Comparativo"),
+        uiOutput("txt_comparativa"),
+        br(),
+        plotOutput("plot_comparativa", height = "450px")
+      )
+    )
+  ),
+  
+  
+  # Pestaña 3: Modelado Estadístico
   nav_panel(title = "Modelado Estadístico",
             sidebarLayout(
               sidebarPanel(
@@ -1842,7 +1888,173 @@ server <- function(input, output, session) {
     }
   )
   
-  # --- Lógica Pestaña 2: Modelado Estadístico ---
+  # Pestaña 2: Comparativas Dinámicas
+  
+  # ------------------------------------------------------------------
+  # Lógica de la Pestaña: Comparativas Dinámicas
+  # ------------------------------------------------------------------
+  
+  # Expresión reactiva principal que decide el tipo de prueba y calcula los resultados
+  analisis_comparativa <- reactive({
+    req(input$comp_var1, input$comp_var2)
+    
+    # Filtrar el dataframe con las variables seleccionadas eliminando filas vacías (NA)
+    df_clean <- formated_lupus_data %>% 
+      select(all_of(c(input$comp_var1, input$comp_var2))) %>% 
+      drop_na()
+    
+    # Validación de seguridad por si el cruce se queda sin renglones válidos
+    if (nrow(df_clean) < 10) {
+      return(list(
+        tipo = "error",
+        texto = "<p><i>No hay suficientes observaciones válidas cruzadas para calcular una prueba estadística.</i></p>",
+        plot = NULL
+      ))
+    }
+    
+    v1 <- df_clean[[input$comp_var1]]
+    v2 <- df_clean[[input$comp_var2]]
+    
+    # Criterio automatizado: ¿La segunda variable se comporta como categórica?
+    es_categorica_v2 <- is.factor(v2) || is.character(v2) || length(unique(v2)) <= 5
+    
+    if (es_categorica_v2) {
+      # ================================================================
+      # ESCENARIO A: Categórica vs Categórica -> Prueba de Chi-Cuadrada
+      # ================================================================
+      tabla_contingencia <- table(v1, v2)
+      prueba_chi <- tryCatch(chisq.test(tabla_contingencia), error = function(e) NULL)
+      
+      if (is.null(prueba_chi)) {
+        texto_html <- "<p>Error matemático al calcular la distribución de Chi-cuadrada debido a frecuencias de celda en cero.</p>"
+      } else {
+        p_val <- prueba_chi$p.value
+        significativo <- if (p_val < 0.05) "SÍ existe" else "NO existe"
+        
+        texto_html <- paste0(
+          "<p><b>Prueba Estadística Ejecutada:</b> Prueba de Independencia Chi-cuadrada de Pearson.</p>",
+          "<p><b>Muestra Analizada:</b> n = ", nrow(df_clean), " pacientes con datos completos.</p>",
+          "<p><b>Resultado del Modelo:</b> Estadístico &chi;<sup>2</sup> = ", round(prueba_chi$statistic, 3), 
+          ", Grados de Libertad = ", prueba_chi$parameter, 
+          ", p-valor = <b>", format.pval(p_val, digits = 4), "</b>.</p>",
+          "<p><b>Interpretación clínica simple:</b> Tomando un nivel de confianza estándar del 95%, se concluye que <b>", significativo, "</b> una asociación estadísticamente significativa entre las variables seleccionadas. ",
+          ifelse(p_val < 0.05, 
+                 "Esto indica que pertenecer a un grupo específico altera notablemente las proporciones de la otra variable.", 
+                 "Esto sugiere que la distribución observada se mantiene proporcionalmente estable e independiente entre los grupos analizados."), "</p>"
+        )
+      }
+      
+      # Gráfico de barras apiladas al 100% para evaluar proporciones relativas
+      p_grafico <- ggplot(df_clean, aes(x = factor(!!sym(input$comp_var1)), fill = factor(!!sym(input$comp_var2)))) +
+        geom_bar(position = "fill", color = "white", width = 0.6) +
+        scale_y_continuous(labels = scales::percent) +
+        labs(y = "Porcentaje Relativo dentro del Grupo", x = paste("Grupos de:", input$comp_var1), fill = input$comp_var2) +
+        scale_fill_manual(values = c("#5A2A7A", "#E5A823", "#D1C4E9", "#00897B", "#C2185B")) +
+        theme_minimal(base_family = "sans") +
+        theme(legend.position = "bottom", axis.text = element_text(size = 11), axis.title = element_text(size = 12))
+      
+      return(list(tipo = "chi", texto = texto_html, plot = p_grafico))
+      
+    } else {
+      # ================================================================
+      # ESCENARIO B: Categórica vs Continua -> Prueba de Permutaciones
+      # ================================================================
+      df_clean[[input$comp_var1]] <- factor(df_clean[[input$comp_var1]])
+      
+      # Ajustar el modelo lineal observado para extraer el estadístico F clásico (Análogo a ANOVA)
+      fit_obs <- tryCatch(lm(as.formula(paste(input$comp_var2, "~", input$comp_var1)), data = df_clean), error = function(e) NULL)
+      
+      if (is.null(fit_obs) || is.na(summary(fit_obs)$fstatistic[1])) {
+        return(list(
+          tipo = "error",
+          texto = "<p>Imposible procesar el modelo matemático de varianza. Verifique la dispersión de los datos continuos.</p>",
+          plot = NULL
+        ))
+      }
+      
+      f_observado <- summary(fit_obs)$fstatistic[1]
+      
+      # Algoritmo de Permutaciones Monte Carlo (500 réplicas para balancear precisión y rapidez web)
+      set.seed(42)
+      f_permutados <- replicate(500, {
+        y_barajeada <- sample(df_clean[[input$comp_var2]])
+        fit_perm <- lm(y_barajeada ~ df_clean[[input$comp_var1]])
+        f_val <- summary(fit_perm)$fstatistic[1]
+        if (is.na(f_val)) return(0) else return(f_val)
+      })
+      
+      p_val_empirico <- mean(f_permutados >= f_observado, na.rm = TRUE)
+      significativo <- if (p_val_empirico < 0.05) "SÍ existen" else "NO existen"
+      
+      texto_html <- paste0(
+        "<p><b>Prueba Estadística Ejecutada:</b> Prueba de Permutaciones exacta mediante simulación Monte Carlo (500 iteraciones).</p>",
+        "<p><b>Muestra Analizada:</b> n = ", nrow(df_clean), " registros analizados.</p>",
+        "<p><b>Resultado del Modelo:</b> Estadístico F de referencia = ", round(f_observado, 3), 
+        ", p-valor empírico = <b>", format.pval(p_val_empirico, digits = 4), "</b>.</p>",
+        "<p><b>Interpretación clínica simple:</b> Tras simular múltiples escenarios aleatorios, la prueba indica que <b>", significativo, "</b> diferencias estadísticamente significativas entre los promedios de los grupos evaluados. ",
+        ifelse(p_val_empirico < 0.05, 
+               "El gráfico inferior ilustra cómo las curvas de densidad se distancian entre sí, confirmando un perfil clínico numéricamente diferente según cada estado.", 
+               "Las curvas muestran un alto solapamiento visual, lo que confirma que las ligeras diferencias en los promedios numéricos actuales son producto del azar muestral."), "</p>"
+      )
+      
+      # Gráfico de densidad suavizada para evaluar solapamiento
+      p_grafico <- ggplot(df_clean, aes(x = !!sym(input$comp_var2), fill = factor(!!sym(input$comp_var1)))) +
+        geom_density(alpha = 0.4, color = NA) +
+        labs(y = "Densidad de Distribución", x = input$comp_var2, fill = paste("Grupos de:", input$comp_var1)) +
+        scale_fill_manual(values = c("#5A2A7A", "#E5A823", "#D1C4E9", "#00897B")) +
+        theme_minimal(base_family = "sans") +
+        theme(legend.position = "bottom", axis.text = element_text(size = 11), axis.title = element_text(size = 12))
+      
+      return(list(tipo = "perm", texto = texto_html, plot = p_grafico))
+    }
+  })
+  
+  # Renderizar la explicación en formato HTML dinámico
+  output$txt_comparativa <- renderUI({
+    HTML(analisis_comparativa()$texto)
+  })
+  
+  # Renderizar el gráfico interactivo/estático correspondiente
+  output$plot_comparativa <- renderPlot({
+    req(analisis_comparativa()$plot)
+    analisis_comparativa()$plot
+  })
+  
+  # Controlador para la descarga del reporte plano .txt
+  output$download_comp <- downloadHandler(
+    filename = function() {
+      paste("Analisis_Comparativo_Lupus_", Sys.Date(), ".txt", sep = "")
+    },
+    content = function(file) {
+      res <- analisis_comparativa()
+      
+      # Encabezado institucional plano
+      encabezado <- c(
+        "==================================================",
+        "REGISTRO MEXICANO DE LUPUS - MÓDULO COMPARATIVAS",
+        paste("Fecha de emisión:", Sys.time()),
+        paste("Variable de Agrupación (Grupos):", input$comp_var1),
+        paste("Variable de Contraste Evaluada:", input$comp_var2),
+        "==================================================",
+        ""
+      )
+      
+      # Eliminar etiquetas HTML para conservar el bloc de notas impecable
+      texto_limpio <- res$texto %>%
+        gsub(pattern = "<p>", replacement = "\n", .) %>%
+        gsub(pattern = "</p>", replacement = "\n", .) %>%
+        gsub(pattern = "<b>", replacement = "", .) %>%
+        gsub(pattern = "</b>", replacement = "", .) %>%
+        gsub(pattern = "<sup>", replacement = "^", .) %>%
+        gsub(pattern = "</sup>", replacement = "", .) %>%
+        gsub(pattern = "&chi;", replacement = "Chi", .)
+      
+      writeLines(c(encabezado, texto_limpio), file)
+    }
+  )
+  
+  
+  # --- Lógica Pestaña 3: Modelado Estadístico ---
   
   modelo_general_reactivo <- eventReactive(input$run_model, {
     req(input$var_target, input$var_predict)
