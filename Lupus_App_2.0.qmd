@@ -810,7 +810,8 @@ formated_neurolupus_data_02 <- formated_neurolupus_data %>%
          Danio_cardiovascular,
          Danio_vascular_periferico,
          Slicc,
-         Sledai
+         Sledai,
+         Actividad_del_LES
          )
 glimpse(formated_neurolupus_data_02)
 
@@ -882,7 +883,7 @@ diccionario_modelado <- list(
   
   "Actividad y Daño de la Enfermedad" = c(
     "Puntaje SLEDAI (Actividad Continua)" = "Sledai",
-    "Actividad del LES (Categórica)" = "Nivel_de_actividad_del_LES",
+    "Actividad del LES (Categórica)" = "Actividad_del_LES",
     "Puntaje SLICC (Daño Acumulado)" = "Slicc",
     "Años viviendo con LES" = "Anios_viviendo_con_LES",
     "Años de retraso en diagnóstico" = "Anios_retraso_diagnostico"
@@ -983,6 +984,7 @@ diccionario_neuro_completo <- list(
   
   "Actividad y Daño Acumulado" = c(
     "Puntaje SLEDAI (Actividad)" = "Sledai",
+    "Actividad del LES (Categórica)" = "Actividad_del_LES",
     "Puntaje SLICC (Daño Total)" = "Slicc",
     "Daño Neuropsiquiátrico" = "Danio_neuropsiquiatrico",
     "Daño Cardiovascular" = "Danio_cardiovascular",
