@@ -1,4 +1,4 @@
-## ----setup, include=FALSE--------------------------------------------------------------------
+## ----setup, include=FALSE-------------------------------------------
 # Packages used in the project
 required_packages <- c(
   "tidyverse",
@@ -20,7 +20,7 @@ load_or_install <- function(packages) {
 load_or_install(required_packages)
 
 
-## --------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------
 #| label: Load dataset
 
 path = "Data/base_de_datos_sin_registros_duplicados_ LupusProjectProducti_DATA_2026-05-11_2035.csv sin_col_vacias_con_suma_SLICC_SLEDAI_pred_dosis_categ_dx_time_curado.csv"
@@ -45,8 +45,13 @@ lupus_data_2 <- load_lupus_data(path_2)
 
 
 
-## --------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------
 #| label: Selecting variables
+
+# Filter age
+lupus_data <- lupus_data %>% 
+  filter(between(calculated_age, 19, 129))
+
 lupus_data <- lupus_data %>% 
   select(
     dx_time,
@@ -116,7 +121,7 @@ lupus_data <- lupus_data %>%
   na.omit()
 
 
-## --------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------
 #| label: Formating dataset 01
 
 lupus_data <- lupus_data %>% 
@@ -130,26 +135,17 @@ lupus_data <- lupus_data %>%
 
 formated_lupus_data <- lupus_data %>% 
   mutate(
+    # Actualizado a los nuevos valores de origen (Remission / Activity)
     Disease.activity.classification = factor(
       Disease.activity.classification,
       levels = c(
-        "No activity",
-        "Mild activity",
-        "Moderate activity",
-        "High activity",
-        "Very high activity"
+        "Remission",
+        "Activity"
       ),
-      
-      # Aplicamos la traducción directa al español
       labels = c(
-        "Sin actividad", 
-        "Leve", 
-        "Moderada", 
-        "Alta", 
-        "Muy alta"
-      ),
-      
-      ordered = TRUE
+        "Remisión", 
+        "Actividad"
+      )
     ),
     
     
@@ -430,7 +426,7 @@ formated_lupus_data <- formated_lupus_data %>%
 glimpse(formated_lupus_data)
 
 
-## --------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------
 #| label: Formatind Dataset 02
 glimpse(lupus_data_2)
 lupus_data_2 <- lupus_data_2 %>% 
@@ -501,7 +497,7 @@ glimpse(formated_lupus_data_2)
 
 
 
-## --------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------
 #| label: Renaming variables
 
 formated_lupus_data <- formated_lupus_data %>%
@@ -567,14 +563,14 @@ formated_lupus_data <- formated_lupus_data %>%
           Presenta_cancer=Malignancy,
           Slicc=total.slicc,
           Sledai=total.sledai,
-          Nivel_de_actividad_del_LES=Disease.activity.classification
+          Actividad_del_LES=Disease.activity.classification
 )
 
 formated_lupus_data
 glimpse(formated_lupus_data)
 
 
-## --------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------
 #| label: Joint Neurolupus Dataset
 
 # Unimos la base de datos de neuroimagen con los datos clínicos generales
@@ -647,7 +643,7 @@ glimpse(formated_neurolupus_data_02)
 
 
 
-## --------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------
 #| label: Pestaña 1 - Pre-procesamiento de variables de daño orgánico
 # ---------------------------------------------------------------------
 # IMPORTANTE: según data_curating_app_1_2.qmd, las variables de daño
@@ -699,7 +695,7 @@ glimpse(
 )
 
 
-## --------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------
 #| label: Neurolupus dictionary
 
 # Diccionario general para el módulo de Modelado Estadístico
@@ -707,7 +703,7 @@ diccionario_modelado <- list(
   
   "Actividad y Daño de la Enfermedad" = c(
     "Puntaje SLEDAI (Actividad Continua)" = "Sledai",
-    "Nivel de Actividad (Categórica)" = "Nivel_de_actividad_del_LES",
+    "Actividad del LES (Categórica)" = "Nivel_de_actividad_del_LES",
     "Puntaje SLICC (Daño Acumulado)" = "Slicc",
     "Años viviendo con LES" = "Anios_viviendo_con_LES",
     "Años de retraso en diagnóstico" = "Anios_retraso_diagnostico"
@@ -856,7 +852,7 @@ diccionario_reporte_gen <- list(
   "Historia clínica de LES" = c(
     "Años viviendo con LES" = "Anios_viviendo_con_LES",
     "Años de retraso en diagnóstico" = "Anios_retraso_diagnostico",
-    "Nivel de actividad del LES" = "Nivel_de_actividad_del_LES",
+    "Actividad del LES" = "Actividad_del_LES",
     "Índice SLEDAI (actividad)" = "Sledai",
     "Índice SLICC (daño acumulado)" = "Slicc",
     "Comorbilidades" = "Comorbilidades",
@@ -917,7 +913,7 @@ diccionario_reporte_gen <- list(
 
 
 
-## --------------------------------------------------------------------------------------------
+## -------------------------------------------------------------------
 #| label: Lupus App
 
 # Procesamiento de datos
@@ -971,7 +967,7 @@ ui <- page_navbar(
                   inputId  = "var_gen",
                   label    = "Variables:",
                   choices  = diccionario_reporte_gen,
-                  selected = c("Edad", "Sexo", "Nivel_de_actividad_del_LES"),
+                  selected = c("Edad", "Sexo", "Actividad_del_LES"),
                   multiple = TRUE,
                   options  = list(
                     placeholder = "Escribe o elige variables..."
@@ -980,9 +976,12 @@ ui <- page_navbar(
                 actionButton("run_gen", "Generar reporte", class = "btn-primary")
               ),
               mainPanel(
-                h3("Resumen descriptivo del registro"),
-                htmlOutput("txt_reporte_gen")
-              )
+                  h3("Resumen descriptivo del registro"),
+                  htmlOutput("txt_reporte_gen"),
+                  br(), # Un pequeño salto de línea visual
+                  # NUEVO: Botón de descarga con el estilo dorado integrado
+                  downloadButton("download_gen_summary", "Descargar Resumen Descriptivo (.txt)", class = "btn-success")
+      )
             )
   ),
   
@@ -1615,6 +1614,49 @@ server <- function(input, output, session) {
     HTML(reporte_general_reactivo())
   })
 
+  # ------------------------------------------------------------------
+  # Manejar la descarga del archivo de texto plano para la Pestaña 1
+  # ------------------------------------------------------------------
+  output$download_gen_summary <- downloadHandler(
+    filename = function() {
+      paste("Resumen_Descriptivo_Lupus_", Sys.Date(), ".txt", sep = "")
+    },
+    content = function(file) {
+      # Forzar que exista la ejecución reactiva del reporte
+      req(reporte_general_reactivo())
+      
+      # Extraemos el contenido HTML actual
+      html_content <- reporte_general_reactivo()
+      
+      # Removemos y traducimos las etiquetas HTML para que el bloc de notas (.txt) lo lea limpio
+      plain_text <- html_content %>%
+        gsub(pattern = "<p>", replacement = "\n", .) %>%
+        gsub(pattern = "</p>", replacement = "\n", .) %>%
+        gsub(pattern = "<b>", replacement = "", .) %>%
+        gsub(pattern = "</b>", replacement = "", .) %>%
+        gsub(pattern = "<mark[^>]*>", replacement = "[ ", .) %>% # Resalta el inicio del dato
+        gsub(pattern = "</mark>", replacement = " ]", .) %>%     # Resalta el fin del dato calculando
+        gsub(pattern = "<i>", replacement = "", .) %>%
+        gsub(pattern = "</i>", replacement = "", .) %>%
+        gsub(pattern = "<small>", replacement = "\n", .) %>%
+        gsub(pattern = "</small>", replacement = "", .)
+      
+      # Formateamos saltos de línea múltiples para mejorar la estética del documento
+      plain_text <- gsub("\n\n+", "\n\n", plain_text)
+      
+      # Estructura del encabezado del archivo plano institucional
+      header_txt <- c(
+        "==================================================",
+        "REPORTE DESCRIPTIVO DEL REGISTRO MEXICANO DE LUPUS",
+        paste("Fecha de descarga:", Sys.time()),
+        "==================================================",
+        ""
+      )
+      
+      # Escritura final del archivo
+      writeLines(c(header_txt, plain_text), file)
+    }
+  )
   
   # --- Lógica Pestaña 2: Modelado Estadístico ---
   
@@ -1888,19 +1930,6 @@ server <- function(input, output, session) {
     }
   )
   
-  # --- Lógica Pestaña 4: Expresión Génica ---
-  observeEvent(input$run_gene, {
-    output$txt_reporte_gene <- renderText({
-      paste("Analizando la expresión de los genes:", paste(input$var_gene, collapse = ", "), 
-            "mediante un", input$plot_type, 
-            ". En esta sección se integrará el análisis de cuentas normalizadas o Fold-Change.")
-    })
-    
-    # Placeholder para la gráfica
-    output$plot_gene <- renderPlot({
-      # Aquí irá la lógica de ggplot2 una vez se carguen los datos de expresión
-    })
-  })
 }
 
 shinyApp(ui, server)
