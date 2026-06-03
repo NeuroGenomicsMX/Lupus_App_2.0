@@ -41,7 +41,8 @@ required_packages <- c(
   "tidyverse",
   "shiny",
   "bslib",
-  "nnet"
+  "nnet",
+  "viridis"
   )
 
 # Feature for automatically installing and downloading packages
@@ -1944,14 +1945,49 @@ server <- function(input, output, session) {
         )
       }
       
-      # Gráfico de barras apiladas al 100% para evaluar proporciones relativas
-      p_grafico <- ggplot(df_clean, aes(x = factor(!!sym(input$comp_var1)), fill = factor(!!sym(input$comp_var2)))) +
-        geom_bar(position = "fill", color = "white", width = 0.6) +
-        scale_y_continuous(labels = scales::percent) +
-        labs(y = "Porcentaje Relativo dentro del Grupo", x = paste("Grupos de:", input$comp_var1), fill = input$comp_var2) +
-        scale_fill_manual(values = c("#5A2A7A", "#E5A823", "#D1C4E9", "#00897B", "#C2185B")) +
+      
+      # Gráfico de barras con paleta Viridis
+      p_grafico <- ggplot(
+        df_clean,
+        aes(
+          x = factor(!!sym(input$comp_var1)),
+          fill = factor(!!sym(input$comp_var2))
+        )
+      ) +
+        geom_bar(
+          position = position_dodge(width = 0.7),
+          color = "white",
+          width = 0.6
+        ) +
+        
+        # Etiquetas n
+        geom_text(
+          stat = "count",
+          aes(label = after_stat(count)),
+          position = position_dodge(width = 0.7),
+          vjust = -0.3,
+          size = 4
+        ) +
+        
+        labs(
+          y = "Frecuencia",
+          x = paste("Grupos de:", input$comp_var1),
+          fill = input$comp_var2
+        ) +
+        
+        scale_fill_viridis_d(
+          option = "inferno",
+          begin = 0.1,
+          end = 0.9
+        ) +
+        
         theme_minimal(base_family = "sans") +
-        theme(legend.position = "bottom", axis.text = element_text(size = 11), axis.title = element_text(size = 12))
+        
+        theme(
+          legend.position = "bottom",
+          axis.text = element_text(size = 11),
+          axis.title = element_text(size = 12)
+        )
       
       return(list(tipo = "chi", texto = texto_html, plot = p_grafico))
       
@@ -1997,11 +2033,11 @@ server <- function(input, output, session) {
                "Las curvas muestran un alto solapamiento visual, lo que confirma que las ligeras diferencias en los promedios numéricos actuales son producto del azar muestral."), "</p>"
       )
       
-      # Gráfico de densidad suavizada para evaluar solapamiento
+      # Gráfico de densidad suavizada con paleta Viridis
       p_grafico <- ggplot(df_clean, aes(x = !!sym(input$comp_var2), fill = factor(!!sym(input$comp_var1)))) +
-        geom_density(alpha = 0.4, color = NA) +
+        geom_density(alpha = 0.5, color = NA) + # Alpha ajustado para mejor visibilidad
         labs(y = "Densidad de Distribución", x = input$comp_var2, fill = paste("Grupos de:", input$comp_var1)) +
-        scale_fill_manual(values = c("#5A2A7A", "#E5A823", "#D1C4E9", "#00897B")) +
+        scale_fill_viridis_d(option = "viridis", begin = 0.1, end = 0.9) + # <-- NUEVO: Paleta accesible
         theme_minimal(base_family = "sans") +
         theme(legend.position = "bottom", axis.text = element_text(size = 11), axis.title = element_text(size = 12))
       
