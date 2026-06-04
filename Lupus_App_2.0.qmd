@@ -872,14 +872,14 @@ glimpse(formated_neurolupus_data_02)
 # ---------------------------------------------------------------------
 
 danio_organico_vars <- c(
-  "Danio_ocular",
+  #"Danio_ocular",
   #"Danio_neuropsiquiatrico",
   #"Danio_renal",
   #"Danio_pulmonar",
   #"Danio_cardiovascular",
-  "Danio_cardiomiopatia",
+ # "Danio_cardiomiopatia",
   #"Danio_vascular_periferico",
-  "Danio_gastrointestinal"
+#  "Danio_gastrointestinal"
   #"Danio_musculoesquletico",
   #"Danio_cutaneo",
   #"Fallo_gonadal_prematuro",
@@ -1437,6 +1437,21 @@ server <- function(input, output, session) {
   #   el % de personas en bajo, intermedio y alto según terciles del
   #   rango teórico (no del registro). Mayor puntaje = mayor severidad.
   # ==================================================================
+  
+  # Plantilla de interpretación para los puntajes de daño a órganos
+  info_danio_ordinal <- list(
+    tipo = "categorias_clinicas",
+    cortes = c(0, 1, 2, 3, Inf),
+    cerrado_izq = TRUE,
+    etiquetas = c(
+      "0 puntos (sin daño acumulado)",
+      "1 punto de daño",
+      "2 puntos de daño",
+      "3 o más puntos de daño"
+    ),
+    nota = "El puntaje refleja la cantidad de afectaciones específicas acumuladas en este órgano."
+  )
+  
   catalogo_numerico_p1 <- list(
     # --- Variables de conteo / tiempo: tiene sentido el promedio ---
     Edad                          = list(tipo = "conteo", unidad = "años"),
@@ -1446,6 +1461,18 @@ server <- function(input, output, session) {
     total_treatments              = list(tipo = "conteo", unidad = "tratamientos"),
     num_family_members_sle        = list(tipo = "conteo", unidad = "familiares"),
 
+    # --- Variables de Daño a Órganos (Conteos Discretos Ordinales) ---
+    Danio_ocular              = info_danio_ordinal,
+    Danio_neuropsiquiatrico   = info_danio_ordinal,
+    Danio_renal               = info_danio_ordinal,
+    Danio_pulmonar            = info_danio_ordinal,
+    Danio_cardiovascular      = info_danio_ordinal,
+    Danio_cardiomiopatia      = info_danio_ordinal,
+    Danio_vascular_periferico = info_danio_ordinal,
+    Danio_gastrointestinal    = info_danio_ordinal,
+    Danio_musculoesquletico   = info_danio_ordinal,
+    Danio_cutaneo             = info_danio_ordinal,
+    
     # --- SLEDAI: umbral validado (>= 6 enfermedad activa) ---
     Sledai = list(
       tipo = "umbral_simple",
