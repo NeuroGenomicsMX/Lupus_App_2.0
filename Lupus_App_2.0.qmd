@@ -1185,12 +1185,38 @@ ui <- page_navbar(
         # Variable 1: Estrictamente Categórica para formar los grupos de comparación
         selectInput(
           inputId = "comp_var1",
-          label = "Variable Categórica de Agrupación (Eje X / Grupos):",
-          choices = c(
-            "Sexo" = "Sexo",
-            "Actividad del LES" = "Actividad_del_LES",
-            "Padece Diabetes" = "Padece_diabetes",
-            "Presenta Cáncer" = "Presenta_cancer"
+          label = "Variable de Agrupación:",
+          choices = list(
+            "Sociodemográficos" = c(
+              "Sexo" = "Sexo",
+              "Escolaridad" = "Escolaridad",
+              "Ocupación" = "Ocupacion"
+            ),
+            "Historia Clínica y Estilo de Vida" = c(
+              "Actividad del LES" = "Actividad_del_LES",
+              "Hábitos de alimentación" = "clasi_ali_es",
+              "Tiene familiar con LES" = "Tiene_familiar_con_LES",
+              "Familiar de 1er grado con LES" = "has_first_degree_sle"
+            ),
+            "Tratamientos Médicos" = c(
+              "¿Recibe algún tratamiento?" = "any_treatment",
+              "¿Usa corticoesteroides?" = "uses_corticosteroids",
+              "Usa Antimaláricos" = "Tratamiento_con_antimalaricos",
+              "Usa Rituximab" = "Tratamiento_con_rituximab",
+              "Usa Ciclofosfamida" = "Tratamiento_con_ciclofosfamida"
+            ),
+            "Daño a Órganos y Comorbilidades" = c(
+              "Daño Renal" = "Danio_renal",
+              "Daño Neuropsiquiátrico" = "Danio_neuropsiquiatrico",
+              "Daño Pulmonar" = "Danio_pulmonar",
+              "Daño Cardiovascular" = "Danio_cardiovascular",
+              "Daño Vascular Periférico" = "Danio_vascular_periferico",
+              "Daño Musculoesquelético" = "Danio_musculoesquletico",
+              "Daño Cutáneo" = "Danio_cutaneo",
+              "Fallo Gonadal Prematuro" = "Fallo_gonadal_prematuro",
+              "Padece Diabetes" = "Padece_diabetes",
+              "Presenta Cáncer" = "Presenta_cancer"
+            )
           ),
           selected = "Actividad_del_LES"
         ),
@@ -1938,15 +1964,14 @@ server <- function(input, output, session) {
           "<p><b>Resultado del Modelo:</b> Estadístico &chi;<sup>2</sup> = ", round(prueba_chi$statistic, 3), 
           ", Grados de Libertad = ", prueba_chi$parameter, 
           ", p-valor = <b>", format.pval(p_val, digits = 4), "</b>.</p>",
-          "<p><b>Interpretación clínica simple:</b> Tomando un nivel de confianza estándar del 95%, se concluye que <b>", significativo, "</b> una asociación estadísticamente significativa entre las variables seleccionadas. ",
+          "<p><b>Interpretación:</b> Tomando un nivel de confianza estándar del 95%, se concluye que <b>", significativo, "</b> una asociación estadísticamente significativa entre las variables seleccionadas. ",
           ifelse(p_val < 0.05, 
                  "Esto indica que pertenecer a un grupo específico altera notablemente las proporciones de la otra variable.", 
                  "Esto sugiere que la distribución observada se mantiene proporcionalmente estable e independiente entre los grupos analizados."), "</p>"
         )
       }
       
-      
-      # Gráfico de barras con paleta Viridis
+            # Gráfico de barras con paleta Viridis
       p_grafico <- ggplot(
         df_clean,
         aes(
@@ -1959,8 +1984,6 @@ server <- function(input, output, session) {
           color = "white",
           width = 0.6
         ) +
-        
-        # Etiquetas n
         geom_text(
           stat = "count",
           aes(label = after_stat(count)),
@@ -1968,23 +1991,17 @@ server <- function(input, output, session) {
           vjust = -0.3,
           size = 4
         ) +
-        
+        # --- CAMBIO AQUÍ: Usamos la función traductora ---
         labs(
           y = "Frecuencia",
-          x = paste("Grupos de:", input$comp_var1),
-          fill = input$comp_var2
+          x = etiqueta_humana_p1(input$comp_var1),
+          fill = etiqueta_humana_p1(input$comp_var2)
         ) +
-        
-        scale_fill_viridis_d(
-          option = "inferno",
-          begin = 0.1,
-          end = 0.9
-        ) +
-        
+        # -------------------------------------------------
+        scale_fill_viridis_d(option = "inferno", begin = 0.1, end = 0.9) +
         theme_minimal(base_family = "sans") +
-        
         theme(
-          legend.position = "bottom",
+          legend.position = "right",
           axis.text = element_text(size = 11),
           axis.title = element_text(size = 12)
         )
@@ -2027,19 +2044,35 @@ server <- function(input, output, session) {
         "<p><b>Muestra Analizada:</b> n = ", nrow(df_clean), " registros analizados.</p>",
         "<p><b>Resultado del Modelo:</b> Estadístico F de referencia = ", round(f_observado, 3), 
         ", p-valor empírico = <b>", format.pval(p_val_empirico, digits = 4), "</b>.</p>",
-        "<p><b>Interpretación clínica simple:</b> Tras simular múltiples escenarios aleatorios, la prueba indica que <b>", significativo, "</b> diferencias estadísticamente significativas entre los promedios de los grupos evaluados. ",
+        "<p><b>Interpretación:</b> Tras simular múltiples escenarios aleatorios, la prueba indica que <b>", significativo, "</b> diferencias estadísticamente significativas entre los promedios de los grupos evaluados. ",
         ifelse(p_val_empirico < 0.05, 
                "El gráfico inferior ilustra cómo las curvas de densidad se distancian entre sí, confirmando un perfil clínico numéricamente diferente según cada estado.", 
                "Las curvas muestran un alto solapamiento visual, lo que confirma que las ligeras diferencias en los promedios numéricos actuales son producto del azar muestral."), "</p>"
       )
       
       # Gráfico de densidad suavizada con paleta Viridis
-      p_grafico <- ggplot(df_clean, aes(x = !!sym(input$comp_var2), fill = factor(!!sym(input$comp_var1)))) +
-        geom_density(alpha = 0.5, color = NA) + # Alpha ajustado para mejor visibilidad
-        labs(y = "Densidad de Distribución", x = input$comp_var2, fill = paste("Grupos de:", input$comp_var1)) +
-        scale_fill_viridis_d(option = "viridis", begin = 0.1, end = 0.9) + # <-- NUEVO: Paleta accesible
+      p_grafico <- ggplot(
+        df_clean, 
+        aes(
+          x = !!sym(input$comp_var2), 
+          fill = factor(!!sym(input$comp_var1))
+        )
+      ) +
+        geom_density(alpha = 0.5, color = NA) + 
+        # --- CAMBIO AQUÍ: Usamos la función traductora ---
+        labs(
+          y = "Densidad de Distribución", 
+          x = etiqueta_humana_p1(input$comp_var2), 
+          fill = etiqueta_humana_p1(input$comp_var1)
+        ) +
+        # -------------------------------------------------
+        scale_fill_viridis_d(option = "inferno", begin = 0.1, end = 0.9) + 
         theme_minimal(base_family = "sans") +
-        theme(legend.position = "bottom", axis.text = element_text(size = 11), axis.title = element_text(size = 12))
+        theme(
+          legend.position = "right", 
+          axis.text = element_text(size = 11), 
+          axis.title = element_text(size = 12)
+        )
       
       return(list(tipo = "perm", texto = texto_html, plot = p_grafico))
     }
