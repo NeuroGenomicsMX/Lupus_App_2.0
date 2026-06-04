@@ -1133,7 +1133,10 @@ diccionario_reporte_gen <- list(
 # Es idéntico al reporte general, pero excluye las variables geográficas 
 # de 32 niveles para evitar el colapso visual y estadístico.
 diccionario_comparativas <- purrr::map(diccionario_reporte_gen, function(grupo) {
-  grupo[!grupo %in% c("Estado_de_residencia", "Estado_de_nacimiento")]
+  grupo[!grupo %in% c("Estado_de_residencia", 
+                      "Estado_de_nacimiento",
+                      "family_member_sle_summary",
+                      "treatment_summary")]
 })
 
 ```
@@ -2038,16 +2041,29 @@ server <- function(input, output, session) {
     # REGLA: Separación estricta entre Nominal vs Numérica (Continua/Ordinal)
     es_nominal_v2 <- is.factor(v2) || is.character(v2)
     
-    if (es_nominal_v2) {
+      if (es_nominal_v2) {
       # ================================================================
       # ESCENARIO A: Categórica Nominal -> Prueba de Chi-Cuadrada
       # ================================================================
       tabla_contingencia <- table(v1, v2)
-      prueba_chi <- tryCatch(chisq.test(tabla_contingencia), error = function(e) NULL)
+      
+      # Se usa suppressWarnings porque R lanza una advertencia en consola automáticamente si expected < 5
+      prueba_chi <- tryCatch(suppressWarnings(chisq.test(tabla_contingencia)), error = function(e) NULL)
       
       if (is.null(prueba_chi)) {
         texto_html <- "<p>Error matemático al calcular la distribución de Chi-cuadrada debido a frecuencias de celda en cero.</p>"
+      
+      } else if (any(prueba_chi$expected < 5)) {
+        # --- NUEVA CONDICIÓN: VALIDACIÓN DE SUPUESTOS ---
+        texto_html <- paste0(
+          "<p><b>Prueba Estadística Omitida (Violación de Supuestos):</b></p>",
+          "<p>El análisis de <b>Chi-cuadrada</b> requiere que las frecuencias <i>esperadas</i> en cada grupo de la tabla sean mayores o iguales a 5. ",
+          "Al cruzar estas variables, debido a que algunas categorías tienen muy pocos pacientes, este supuesto matemático <b>no se cumple</b>.</p>",
+          "<p><b>Interpretación:</b> Por rigor metodológico, el algoritmo ha cancelado el cálculo del valor <i>p</i> para prevenir conclusiones clínicas engañosas (falsos positivos o negativos). Sin embargo, puedes analizar visualmente las proporciones de la muestra en la gráfica inferior.</p>"
+        )
+        
       } else {
+        # --- EJECUCIÓN NORMAL SI SE CUMPLEN LOS SUPUESTOS ---
         p_val <- prueba_chi$p.value
         significativo <- if (p_val < 0.05) "SÍ existe" else "NO existe"
         
@@ -2078,6 +2094,7 @@ server <- function(input, output, session) {
         theme(legend.position = "right", axis.text = element_text(size = 11), axis.title = element_text(size = 12))
       
       return(list(tipo = "chi", texto = texto_html, plot = p_grafico))
+      
       
     } else {
       # ================================================================
