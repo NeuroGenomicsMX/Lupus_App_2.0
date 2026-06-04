@@ -42,7 +42,8 @@ required_packages <- c(
   "shiny",
   "bslib",
   "nnet",
-  "viridis"
+  "viridis",
+  "coin"
   )
 
 # Feature for automatically installing and downloading packages
@@ -2008,47 +2009,106 @@ server <- function(input, output, session) {
       
       return(list(tipo = "chi", texto = texto_html, plot = p_grafico))
       
-    } else {
+} else {
       # ================================================================
-      # ESCENARIO B: Categórica vs Continua -> Prueba de Permutaciones
+      # ESCENARIO B: Categórica vs Continua -> Prueba de Permutaciones Robustas
       # ================================================================
       df_clean[[input$comp_var1]] <- factor(df_clean[[input$comp_var1]])
       
-      # Ajustar el modelo lineal observado para extraer el estadístico F clásico (Análogo a ANOVA)
-      fit_obs <- tryCatch(lm(as.formula(paste(input$comp_var2, "~", input$comp_var1)), data = df_clean), error = function(e) NULL)
-      
-      if (is.null(fit_obs) || is.na(summary(fit_obs)$fstatistic[1])) {
+      # Validación extra de seguridad: ¿Hay al menos 2 grupos para comparar?
+      if (length(unique(df_clean[[input$comp_var1]])) < 2) {
         return(list(
           tipo = "error",
-          texto = "<p>Imposible procesar el modelo matemático de varianza. Verifique la dispersión de los datos continuos.</p>",
+          texto = "<p><i>No hay suficientes grupos distintos con datos válidos para realizar una comparación.</i></p>",
           plot = NULL
         ))
       }
       
-      f_observado <- summary(fit_obs)$fstatistic[1]
+      formula_test <- as.formula(paste(input$comp_var2, "~", input$comp_var1))
       
-      # Algoritmo de Permutaciones Monte Carlo (500 réplicas para balancear precisión y rapidez web)
-      set.seed(42)
-      f_permutados <- replicate(500, {
-        y_barajeada <- sample(df_clean[[input$comp_var2]])
-        fit_perm <- lm(y_barajeada ~ df_clean[[input$comp_var1]])
-        f_val <- summary(fit_perm)$fstatistic[1]
-        if (is.na(f_val)) return(0) else return(f_val)
-      })
+      # 1. PRUEBA GLOBAL (Omnibus) de Permutaciones usando paquete 'coin' (999 iteraciones Monte Carlo)
+      global_test <- tryCatch({
+        coin::oneway_test(formula_test, data = df_clean, distribution = coin::approximate(nresample = 999))
+      }, error = function(e) NULL)
       
-      p_val_empirico <- mean(f_permutados >= f_observado, na.rm = TRUE)
-      significativo <- if (p_val_empirico < 0.05) "SÍ existen" else "NO existen"
+      if (is.null(global_test)) {
+        return(list(
+          tipo = "error",
+          texto = "<p>Imposible procesar el modelo de varianza permutacional. Verifique la dispersión de los datos continuos.</p>",
+          plot = NULL
+        ))
+      }
       
+      p_val_global <- coin::pvalue(global_test)[1]
+      estadistico_global <- coin::statistic(global_test)[1]
+      
+      # Encabezado del reporte
       texto_html <- paste0(
-        "<p><b>Prueba Estadística Ejecutada:</b> Prueba de Permutaciones exacta mediante simulación Monte Carlo (500 iteraciones).</p>",
-        "<p><b>Muestra Analizada:</b> n = ", nrow(df_clean), " registros analizados.</p>",
-        "<p><b>Resultado del Modelo:</b> Estadístico F de referencia = ", round(f_observado, 3), 
-        ", p-valor empírico = <b>", format.pval(p_val_empirico, digits = 4), "</b>.</p>",
-        "<p><b>Interpretación:</b> Tras simular múltiples escenarios aleatorios, la prueba indica que <b>", significativo, "</b> diferencias estadísticamente significativas entre los promedios de los grupos evaluados. ",
-        ifelse(p_val_empirico < 0.05, 
-               "El gráfico inferior ilustra cómo las curvas de densidad se distancian entre sí, confirmando un perfil clínico numéricamente diferente según cada estado.", 
-               "Las curvas muestran un alto solapamiento visual, lo que confirma que las ligeras diferencias en los promedios numéricos actuales son producto del azar muestral."), "</p>"
+        "<p><b>Prueba Estadística Ejecutada:</b> Prueba global de permutaciones (999 simulaciones de Monte Carlo mediante paquete <i>coin</i>), un método robusto que no asume normalidad.</p>",
+        "<p><b>Muestra Analizada:</b> n = ", nrow(df_clean), " registros.</p>"
       )
+      
+      # 2. EVALUACIÓN Y ANÁLISIS POST HOC
+      if (p_val_global >= 0.05) {
+        # NO hay diferencias
+        texto_html <- paste0(
+          texto_html,
+          "<p><b>Interpretación clínica simple:</b> Tras comparar a los grupos de la muestra, se concluye que <b>NO existen diferencias estadísticamente significativas</b> (p = ", format.pval(p_val_global, digits = 4), "). ",
+          "Las ligeras variaciones visuales en las curvas del gráfico inferior son producto del azar, confirmando que el comportamiento de esta variable es similar entre los grupos analizados.</p>"
+        )
+      } else {
+        # SÍ hay diferencias globales
+        texto_html <- paste0(
+          texto_html,
+          "<p><b>Resultado Global:</b> Se detectó que existe por lo menos una diferencia estadísticamente significativa entre los grupos evaluados (Estadístico = ", round(estadistico_global, 3), ", p = ", format.pval(p_val_global, digits = 4), ").</p>"
+        )
+        
+        grupos <- levels(df_clean[[input$comp_var1]])
+        
+        if (length(grupos) > 2) {
+          # 2.1 Post Hoc por pares (Si hay 3 o más grupos, ej. Escolaridad, Tratamientos)
+          pares <- combn(grupos, 2, simplify = FALSE)
+          p_raw <- c()
+          nombres_pares <- c()
+          
+          # Bucle por cada par posible
+          for(par in pares) {
+            df_par <- df_clean %>% filter(!!sym(input$comp_var1) %in% par) %>% droplevels()
+            test_par <- coin::oneway_test(formula_test, data = df_par, distribution = coin::approximate(nresample = 999))
+            p_raw <- c(p_raw, coin::pvalue(test_par)[1])
+            nombres_pares <- c(nombres_pares, paste("<b>", par[1], "</b> vs <b>", par[2], "</b>"))
+          }
+          
+          # Corrección de múltiples comparaciones (FDR - False Discovery Rate)
+          p_adj <- p.adjust(p_raw, method = "fdr")
+          sig_pares <- which(p_adj < 0.05)
+          
+          if (length(sig_pares) > 0) {
+            texto_html <- paste0(
+              texto_html,
+              "<p><b>Análisis Específico (Post hoc por pares corregido por FDR):</b> Al existir múltiples grupos, exploramos cada combinación posible con un filtro estricto para evitar falsos positivos. Descubrimos que las diferencias reales existen exclusivamente al comparar:</p><ul>"
+            )
+            for (idx in sig_pares) {
+              texto_html <- paste0(texto_html, "<li>", nombres_pares[idx], " (p ajustado = ", format.pval(p_adj[idx], digits = 4), ")</li>")
+            }
+            texto_html <- paste0(texto_html, "</ul><p>Cualquier otra comparativa entre los grupos restantes no mostró diferencias concluyentes.</p>")
+          } else {
+            texto_html <- paste0(
+              texto_html,
+              "<p><b>Análisis Específico:</b> Aunque la prueba global detectó una tendencia a la diferencia, al aplicar la corrección estricta de control de falsos positivos (FDR) en el análisis par a par, ninguna de las diferencias individuales logró mantenerse como estadísticamente significativa de manera aislada.</p>"
+            )
+          }
+        } else {
+          # 2.2 Solo hay 2 grupos (Ej. Sexo, Diabetes). La global ES la post hoc.
+          texto_html <- paste0(
+            texto_html,
+            "<p><b>Interpretación clínica simple:</b> Al contar con solo dos grupos, la prueba confirma directamente que <b>SÍ existen diferencias reales</b> entre ellos. El gráfico inferior ilustra cómo sus distribuciones se separan o concentran en rangos distintos, respaldando esta evidencia matemática.</p>"
+          )
+        }
+      }
+      
+      # Gráfico de densidad suavizada con paleta Viridis ... 
+      # (Tu código de p_grafico <- ggplot(...) original sigue intacto aquí debajo)
       
       # Gráfico de densidad suavizada con paleta Viridis
       p_grafico <- ggplot(
