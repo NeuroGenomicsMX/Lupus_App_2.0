@@ -1136,7 +1136,8 @@ diccionario_comparativas <- purrr::map(diccionario_reporte_gen, function(grupo) 
   grupo[!grupo %in% c("Estado_de_residencia", 
                       "Estado_de_nacimiento",
                       "family_member_sle_summary",
-                      "treatment_summary")]
+                      "treatment_summary",
+                      "treatment_profile")]
 })
 
 ```
@@ -2083,22 +2084,34 @@ server <- function(input, output, session) {
         )
       }
       
-      # Gráfico de barras apiladas con paleta Viridis
+      # Gráfico de barras contiguas (agrupadas) con paleta Viridis y conteo n
       p_grafico <- ggplot(df_clean, aes(x = factor(!!sym(input$comp_var1)), fill = factor(!!sym(input$comp_var2)))) +
-        geom_bar(position = "fill", color = "white", width = 0.6) +
-        scale_y_continuous(labels = scales::percent) +
+        geom_bar(
+          position = position_dodge(width = 0.7), 
+          color = "white", 
+          width = 0.6
+        ) +
+        geom_text(
+          stat = "count", 
+          aes(label = after_stat(count)), 
+          position = position_dodge(width = 0.7), 
+          vjust = -0.3, 
+          size = 4
+        ) +
         labs(
-          y = "Proporción Relativa", 
+          y = "Frecuencia", 
           x = etiqueta_humana_p1(input$comp_var1), 
           fill = etiqueta_humana_p1(input$comp_var2),
           caption = "Fuente: Registro Mexicano de Lupus"
         ) +
         scale_fill_viridis_d(option = "inferno", begin = 0.1, end = 0.9) +
         theme_minimal(base_family = "sans") +
-        theme(legend.position = "right",
-              axis.text = element_text(size = 11), axis.title = element_text(size = 12),
-              plot.caption = element_text(size = 9, color = "gray50", face = "italic", margin = margin(t = 15))
-              )
+        theme(
+          legend.position = "right", 
+          axis.text = element_text(size = 11), 
+          axis.title = element_text(size = 12),
+          plot.caption = element_text(size = 9, color = "gray50", face = "italic", margin = margin(t = 15))
+        )
       
       return(list(tipo = "chi", texto = texto_html, plot = p_grafico))
       
