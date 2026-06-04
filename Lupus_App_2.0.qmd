@@ -935,7 +935,7 @@ diccionario_modelado <- list(
     "Escolaridad" = "Escolaridad",
     "Ocupación" = "Ocupacion",
     "Nivel Socioeconómico" = "Nivel_socioeconomico",
-    "Estado de Residencia" = "Estado_de_residencia",
+    #"Estado de Residencia" = "Estado_de_residencia",
     "Comorbilidades Adicionales" = "Comorbilidades",
     "Tiene familiar con LES" = "Tiene_familiar_con_LES"
   )
@@ -1094,6 +1094,15 @@ diccionario_reporte_gen <- list(
   )
 )
 
+# ---------------------------------------------------------------------
+# Diccionario para la Pestaña 2: Comparativas
+# ---------------------------------------------------------------------
+# Es idéntico al reporte general, pero excluye las variables geográficas 
+# de 32 niveles para evitar el colapso visual y estadístico.
+diccionario_comparativas <- purrr::map(diccionario_reporte_gen, function(grupo) {
+  grupo[!grupo %in% c("Estado_de_residencia", "Estado_de_nacimiento")]
+})
+
 ```
 
 
@@ -1226,7 +1235,7 @@ ui <- page_navbar(
         selectizeInput(
           inputId = "comp_var2",
           label = "Variable a Comparar:",
-          choices = diccionario_reporte_gen, # Reutiliza tu catálogo general de variables
+          choices = diccionario_comparativas, 
           selected = "Edad"
         ),
         hr(),
@@ -2053,7 +2062,7 @@ server <- function(input, output, session) {
         # NO hay diferencias
         texto_html <- paste0(
           texto_html,
-          "<p><b>Interpretación clínica simple:</b> Tras comparar a los grupos de la muestra, se concluye que <b>NO existen diferencias estadísticamente significativas</b> (p = ", format.pval(p_val_global, digits = 4), "). ",
+          "<p><b>Interpretación:</b> Tras comparar a los grupos de la muestra, se concluye que <b>NO existen diferencias estadísticamente significativas</b> (p = ", format.pval(p_val_global, digits = 4), "). ",
           "Las ligeras variaciones visuales en las curvas del gráfico inferior son producto del azar, confirmando que el comportamiento de esta variable es similar entre los grupos analizados.</p>"
         )
       } else {
@@ -2102,7 +2111,7 @@ server <- function(input, output, session) {
           # 2.2 Solo hay 2 grupos (Ej. Sexo, Diabetes). La global ES la post hoc.
           texto_html <- paste0(
             texto_html,
-            "<p><b>Interpretación clínica simple:</b> Al contar con solo dos grupos, la prueba confirma directamente que <b>SÍ existen diferencias reales</b> entre ellos. El gráfico inferior ilustra cómo sus distribuciones se separan o concentran en rangos distintos, respaldando esta evidencia matemática.</p>"
+            "<p><b>Interpretación:</b> Al contar con solo dos grupos, la prueba confirma directamente que <b>SÍ existen diferencias reales</b> entre ellos. El gráfico inferior ilustra cómo sus distribuciones se separan o concentran en rangos distintos, respaldando esta evidencia matemática.</p>"
           )
         }
       }
