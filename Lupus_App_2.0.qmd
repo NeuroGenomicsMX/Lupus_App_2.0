@@ -1191,6 +1191,10 @@ ui <- page_navbar(
                   "Mexicano de Lupus para las variables elegidas. ",
                   "Los valores calculados se resaltan en morado."
                 ),
+                
+                # --- NUEVO: Casilla para seleccionar todas ---
+                checkboxInput("select_all_gen", "Seleccionar todas las variables", value = FALSE),
+                
                 selectizeInput(
                   inputId  = "var_gen",
                   label    = "Variables:",
@@ -1373,6 +1377,27 @@ server <- function(input, output, session) {
   # - htmlOutput permite renderizar el HTML directamente.
   #
   # 
+  
+  # ==================================================================
+  # Lógica Pestaña 1: Reporte General descriptivo
+  # ==================================================================
+  datos_reporte_gen <- datos_pestana1
+
+  # ------------------------------------------------------------------
+  # Observador para la casilla "Seleccionar todas"
+  # ------------------------------------------------------------------
+  observeEvent(input$select_all_gen, {
+    if (input$select_all_gen) {
+      # Extrae todos los valores internos del diccionario colapsando las sublistas
+      todas_las_vars <- unname(unlist(diccionario_reporte_gen))
+      
+      updateSelectizeInput(session, "var_gen", selected = todas_las_vars)
+    } else {
+      # Si se desmarca, regresa a la selección predeterminada básica
+      updateSelectizeInput(session, "var_gen", selected = c("Edad", "Sexo", "Actividad_del_LES"))
+    }
+  })
+  
   datos_reporte_gen <- datos_pestana1
 
   # Diccionario plano (etiqueta humana -> nombre interno)
