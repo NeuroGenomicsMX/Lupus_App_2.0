@@ -1273,8 +1273,11 @@ ui <- page_navbar(
           selected = "Edad"
         ),
         hr(),
-        # Botón de descarga unificado con estilo dorado institucional
-        downloadButton("download_comp", "Descargar Análisis (.txt)", class = "btn-success")
+        # Botón de descarga de análisis de texto
+        downloadButton("download_comp", "Descargar Análisis (.txt)", class = "btn-success"),
+        br(), br(), # Saltos de línea para espaciar
+        # --- NUEVO: Botón de descarga del gráfico ---
+        downloadButton("download_plot_comp", "Descargar Gráfico (PNG)", class = "btn-primary")
       ),
       
       mainPanel(
@@ -2087,11 +2090,15 @@ server <- function(input, output, session) {
         labs(
           y = "Proporción Relativa", 
           x = etiqueta_humana_p1(input$comp_var1), 
-          fill = etiqueta_humana_p1(input$comp_var2)
+          fill = etiqueta_humana_p1(input$comp_var2),
+          caption = "Fuente: Registro Mexicano de Lupus"
         ) +
         scale_fill_viridis_d(option = "inferno", begin = 0.1, end = 0.9) +
         theme_minimal(base_family = "sans") +
-        theme(legend.position = "right", axis.text = element_text(size = 11), axis.title = element_text(size = 12))
+        theme(legend.position = "right",
+              axis.text = element_text(size = 11), axis.title = element_text(size = 12),
+              plot.caption = element_text(size = 9, color = "gray50", face = "italic", margin = margin(t = 15))
+              )
       
       return(list(tipo = "chi", texto = texto_html, plot = p_grafico))
       
@@ -2205,7 +2212,8 @@ server <- function(input, output, session) {
           labs(
             y = "Proporción Relativa", 
             x = etiqueta_humana_p1(input$comp_var1), 
-            fill = paste("Nivel de:", etiqueta_humana_p1(input$comp_var2))
+            fill = paste("Nivel de:", etiqueta_humana_p1(input$comp_var2)),
+            caption = "Fuente: Registro Mexicano de Lupus"
           ) +
           scale_fill_viridis_d(option = "inferno", begin = 0.1, end = 0.9) +
           theme_minimal(base_family = "sans") +
@@ -2217,11 +2225,14 @@ server <- function(input, output, session) {
           labs(
             y = "Densidad de Distribución", 
             x = etiqueta_humana_p1(input$comp_var2), 
-            fill = paste("Grupos de:", etiqueta_humana_p1(input$comp_var1))
+            fill = paste("Grupos de:", etiqueta_humana_p1(input$comp_var1)),
+            caption = "Fuente: Registro Mexicano de Lupus"
           ) +
           scale_fill_viridis_d(option = "viridis", begin = 0.1, end = 0.9) + 
           theme_minimal(base_family = "sans") +
-          theme(legend.position = "right", axis.text = element_text(size = 11), axis.title = element_text(size = 12))
+          theme(legend.position = "right", axis.text = element_text(size = 11), axis.title = element_text(size = 12),
+           plot.caption = element_text(size = 9, color = "gray50", face = "italic", margin = margin(t = 15))     
+                )
       }
       
       return(list(tipo = "perm", texto = texto_html, plot = p_grafico))
@@ -2272,6 +2283,28 @@ server <- function(input, output, session) {
     }
   )
   
+  # --- NUEVO: Controlador para la descarga del Gráfico de Alta Calidad ---
+  output$download_plot_comp <- downloadHandler(
+    filename = function() {
+      paste("Grafico_Comparativas_Lupus_", Sys.Date(), ".png", sep = "")
+    },
+    content = function(file) {
+      # Requerimos que el gráfico exista antes de intentar guardar
+      req(analisis_comparativa()$plot)
+      
+      # ggsave fuerza los 300 dpi. 
+      # bg = "white" es crucial porque theme_minimal a veces renderiza fondos transparentes
+      ggsave(
+        filename = file,
+        plot = analisis_comparativa()$plot,
+        device = "png",
+        width = 10,
+        height = 6,
+        dpi = 300,
+        bg = "white"
+      )
+    }
+  )
   
   # --- Lógica Pestaña 3: Modelado Estadístico ---
   
