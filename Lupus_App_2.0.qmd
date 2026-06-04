@@ -318,6 +318,37 @@ formated_lupus_data <- lupus_data %>%
       )
     ),
     
+    # --- DAÑOS A NUMÉRICAS DISCRETAS ---
+        Renal = suppressWarnings(as.integer(Renal)),
+        Neuropsychiatric = suppressWarnings(as.integer(Neuropsychiatric)),
+        Pulmonary = suppressWarnings(as.integer(Pulmonary)),
+        Cardiovascular = suppressWarnings(as.integer(Cardiovascular)),
+        Peripheral.vascular = suppressWarnings(as.integer(Peripheral.vascular)),
+        Musculoskeletal = suppressWarnings(as.integer(Musculoskeletal)),
+        Skin = suppressWarnings(as.integer(Skin)),
+        Ocular = suppressWarnings(as.integer(Ocular)),
+        Cardiomyopathy = suppressWarnings(as.integer(Cardiomyopathy)),
+        Gastrointestinal = suppressWarnings(as.integer(Gastrointestinal)),
+        
+        # --- VARIABLES CATEGÓRICAS (1 = Sí, 0 = No, 2 = NA) ---
+        Premature.gonadal = factor(
+          suppressWarnings(as.integer(Premature.gonadal)),
+          levels = c(0, 1),
+          labels = c("No", "Sí")
+        ),
+        
+        Diabetes = factor(
+          suppressWarnings(as.integer(Diabetes)),
+          levels = c(0, 1),
+          labels = c("No", "Sí")
+        ),
+        
+        Malignancy = factor(
+          # Condicional para atrapar explícitamente el 2 y convertirlo en NA (Vacío)
+          ifelse(suppressWarnings(as.integer(Malignancy)) == 2, NA, suppressWarnings(as.integer(Malignancy))),
+          levels = c(0, 1),
+          labels = c("No", "Sí")
+        ),
     
     clasi_ali = suppressWarnings(as.numeric(clasi_ali)),
     
@@ -482,7 +513,8 @@ formated_lupus_data <- lupus_data %>%
   )
 ),
 
-uses_corticosteroids = prednisolona != "No"
+uses_corticosteroids = prednisolona != "No",
+
   )
 
 treatment_labels <- c(
@@ -591,6 +623,7 @@ formated_lupus_data <- formated_lupus_data %>%
           )
         )
     )
+    
   )
 
 glimpse(formated_lupus_data)
@@ -840,18 +873,18 @@ glimpse(formated_neurolupus_data_02)
 
 danio_organico_vars <- c(
   "Danio_ocular",
-  "Danio_neuropsiquiatrico",
-  "Danio_renal",
-  "Danio_pulmonar",
-  "Danio_cardiovascular",
+  #"Danio_neuropsiquiatrico",
+  #"Danio_renal",
+  #"Danio_pulmonar",
+  #"Danio_cardiovascular",
   "Danio_cardiomiopatia",
-  "Danio_vascular_periferico",
-  "Danio_gastrointestinal",
-  "Danio_musculoesquletico",
-  "Danio_cutaneo",
-  "Fallo_gonadal_prematuro",
-  "Padece_diabetes",
-  "Presenta_cancer"
+  #"Danio_vascular_periferico",
+  "Danio_gastrointestinal"
+  #"Danio_musculoesquletico",
+  #"Danio_cutaneo",
+  #"Fallo_gonadal_prematuro",
+  #"Padece_diabetes",
+  #"Presenta_cancer"
 )
 
 # Creamos una copia local del dataset SOLO para la Pestaña 1.
@@ -1193,9 +1226,10 @@ ui <- page_navbar(
         br(),
         
         # Variable 1: Estrictamente Categórica para formar los grupos de comparación
+        # Variable 1: Estrictamente Categórica para formar los grupos de comparación
         selectInput(
           inputId = "comp_var1",
-          label = "Variable de Agrupación:",
+          label = "Variable de Agrupación (Eje X / Grupos):",
           choices = list(
             "Sociodemográficos" = c(
               "Sexo" = "Sexo",
@@ -1215,14 +1249,7 @@ ui <- page_navbar(
               "Usa Rituximab" = "Tratamiento_con_rituximab",
               "Usa Ciclofosfamida" = "Tratamiento_con_ciclofosfamida"
             ),
-            "Daño a Órganos y Comorbilidades" = c(
-              "Daño Renal" = "Danio_renal",
-              "Daño Neuropsiquiátrico" = "Danio_neuropsiquiatrico",
-              "Daño Pulmonar" = "Danio_pulmonar",
-              "Daño Cardiovascular" = "Danio_cardiovascular",
-              "Daño Vascular Periférico" = "Danio_vascular_periferico",
-              "Daño Musculoesquelético" = "Danio_musculoesquletico",
-              "Daño Cutáneo" = "Danio_cutaneo",
+            "Comorbilidades y Condiciones" = c(
               "Fallo Gonadal Prematuro" = "Fallo_gonadal_prematuro",
               "Padece Diabetes" = "Padece_diabetes",
               "Presenta Cáncer" = "Presenta_cancer"
@@ -1932,6 +1959,10 @@ server <- function(input, output, session) {
   # ------------------------------------------------------------------
   
   # Expresión reactiva principal que decide el tipo de prueba y calcula los resultados
+  
+  # ------------------------------------------------------------------
+  # Lógica de la Pestaña: Comparativas Dinámicas
+  # ------------------------------------------------------------------
   analisis_comparativa <- reactive({
     req(input$comp_var1, input$comp_var2)
     
@@ -1952,12 +1983,12 @@ server <- function(input, output, session) {
     v1 <- df_clean[[input$comp_var1]]
     v2 <- df_clean[[input$comp_var2]]
     
-    # Criterio automatizado: ¿La segunda variable se comporta como categórica?
-    es_categorica_v2 <- is.factor(v2) || is.character(v2) || length(unique(v2)) <= 5
+    # REGLA: Separación estricta entre Nominal vs Numérica (Continua/Ordinal)
+    es_nominal_v2 <- is.factor(v2) || is.character(v2)
     
-    if (es_categorica_v2) {
+    if (es_nominal_v2) {
       # ================================================================
-      # ESCENARIO A: Categórica vs Categórica -> Prueba de Chi-Cuadrada
+      # ESCENARIO A: Categórica Nominal -> Prueba de Chi-Cuadrada
       # ================================================================
       tabla_contingencia <- table(v1, v2)
       prueba_chi <- tryCatch(chisq.test(tabla_contingencia), error = function(e) NULL)
@@ -1974,53 +2005,31 @@ server <- function(input, output, session) {
           "<p><b>Resultado del Modelo:</b> Estadístico &chi;<sup>2</sup> = ", round(prueba_chi$statistic, 3), 
           ", Grados de Libertad = ", prueba_chi$parameter, 
           ", p-valor = <b>", format.pval(p_val, digits = 4), "</b>.</p>",
-          "<p><b>Interpretación:</b> Tomando un nivel de confianza estándar del 95%, se concluye que <b>", significativo, "</b> una asociación estadísticamente significativa entre las variables seleccionadas. ",
+          "<p><b>Interpretación clínica simple:</b> Tomando un nivel de confianza estándar del 95%, se concluye que <b>", significativo, "</b> una asociación estadísticamente significativa entre las variables seleccionadas. ",
           ifelse(p_val < 0.05, 
                  "Esto indica que pertenecer a un grupo específico altera notablemente las proporciones de la otra variable.", 
                  "Esto sugiere que la distribución observada se mantiene proporcionalmente estable e independiente entre los grupos analizados."), "</p>"
         )
       }
       
-            # Gráfico de barras con paleta Viridis
-      p_grafico <- ggplot(
-        df_clean,
-        aes(
-          x = factor(!!sym(input$comp_var1)),
-          fill = factor(!!sym(input$comp_var2))
-        )
-      ) +
-        geom_bar(
-          position = position_dodge(width = 0.7),
-          color = "white",
-          width = 0.6
-        ) +
-        geom_text(
-          stat = "count",
-          aes(label = after_stat(count)),
-          position = position_dodge(width = 0.7),
-          vjust = -0.3,
-          size = 4
-        ) +
-        # --- CAMBIO AQUÍ: Usamos la función traductora ---
+      # Gráfico de barras apiladas con paleta Viridis
+      p_grafico <- ggplot(df_clean, aes(x = factor(!!sym(input$comp_var1)), fill = factor(!!sym(input$comp_var2)))) +
+        geom_bar(position = "fill", color = "white", width = 0.6) +
+        scale_y_continuous(labels = scales::percent) +
         labs(
-          y = "Frecuencia",
-          x = etiqueta_humana_p1(input$comp_var1),
+          y = "Proporción Relativa", 
+          x = etiqueta_humana_p1(input$comp_var1), 
           fill = etiqueta_humana_p1(input$comp_var2)
         ) +
-        # -------------------------------------------------
         scale_fill_viridis_d(option = "inferno", begin = 0.1, end = 0.9) +
         theme_minimal(base_family = "sans") +
-        theme(
-          legend.position = "right",
-          axis.text = element_text(size = 11),
-          axis.title = element_text(size = 12)
-        )
+        theme(legend.position = "right", axis.text = element_text(size = 11), axis.title = element_text(size = 12))
       
       return(list(tipo = "chi", texto = texto_html, plot = p_grafico))
       
-} else {
+    } else {
       # ================================================================
-      # ESCENARIO B: Categórica vs Continua -> Prueba de Permutaciones Robustas
+      # ESCENARIO B: Continua o Discreta Ordinal -> Permutaciones y Post-Hoc
       # ================================================================
       df_clean[[input$comp_var1]] <- factor(df_clean[[input$comp_var1]])
       
@@ -2062,8 +2071,8 @@ server <- function(input, output, session) {
         # NO hay diferencias
         texto_html <- paste0(
           texto_html,
-          "<p><b>Interpretación:</b> Tras comparar a los grupos de la muestra, se concluye que <b>NO existen diferencias estadísticamente significativas</b> (p = ", format.pval(p_val_global, digits = 4), "). ",
-          "Las ligeras variaciones visuales en las curvas del gráfico inferior son producto del azar, confirmando que el comportamiento de esta variable es similar entre los grupos analizados.</p>"
+          "<p><b>Interpretación clínica simple:</b> Tras comparar a los grupos de la muestra, se concluye que <b>NO existen diferencias estadísticamente significativas</b> (p = ", format.pval(p_val_global, digits = 4), "). ",
+          "Las ligeras variaciones visuales en el gráfico inferior son producto del azar, confirmando que el comportamiento de esta variable es similar entre los grupos analizados.</p>"
         )
       } else {
         # SÍ hay diferencias globales
@@ -2075,7 +2084,7 @@ server <- function(input, output, session) {
         grupos <- levels(df_clean[[input$comp_var1]])
         
         if (length(grupos) > 2) {
-          # 2.1 Post Hoc por pares (Si hay 3 o más grupos, ej. Escolaridad, Tratamientos)
+          # 2.1 Post Hoc por pares
           pares <- combn(grupos, 2, simplify = FALSE)
           p_raw <- c()
           nombres_pares <- c()
@@ -2088,7 +2097,7 @@ server <- function(input, output, session) {
             nombres_pares <- c(nombres_pares, paste("<b>", par[1], "</b> vs <b>", par[2], "</b>"))
           }
           
-          # Corrección de múltiples comparaciones (FDR - False Discovery Rate)
+          # Corrección de múltiples comparaciones (FDR)
           p_adj <- p.adjust(p_raw, method = "fdr")
           sig_pares <- which(p_adj < 0.05)
           
@@ -2108,40 +2117,43 @@ server <- function(input, output, session) {
             )
           }
         } else {
-          # 2.2 Solo hay 2 grupos (Ej. Sexo, Diabetes). La global ES la post hoc.
+          # 2.2 Solo hay 2 grupos
           texto_html <- paste0(
             texto_html,
-            "<p><b>Interpretación:</b> Al contar con solo dos grupos, la prueba confirma directamente que <b>SÍ existen diferencias reales</b> entre ellos. El gráfico inferior ilustra cómo sus distribuciones se separan o concentran en rangos distintos, respaldando esta evidencia matemática.</p>"
+            "<p><b>Interpretación clínica simple:</b> Al contar con solo dos grupos, la prueba confirma directamente que <b>SÍ existen diferencias reales</b> entre ellos. El gráfico inferior ilustra cómo sus distribuciones se separan o concentran en rangos distintos, respaldando esta evidencia matemática.</p>"
           )
         }
       }
       
-      # Gráfico de densidad suavizada con paleta Viridis ... 
-      # (Tu código de p_grafico <- ggplot(...) original sigue intacto aquí debajo)
+      # 3. LÓGICA DE VISUALIZACIÓN: Densidad vs Barras Ordinales
+      es_discreta_ordinal <- length(unique(na.omit(v2))) <= 12
       
-      # Gráfico de densidad suavizada con paleta Viridis
-      p_grafico <- ggplot(
-        df_clean, 
-        aes(
-          x = !!sym(input$comp_var2), 
-          fill = factor(!!sym(input$comp_var1))
-        )
-      ) +
-        geom_density(alpha = 0.5, color = NA) + 
-        # --- CAMBIO AQUÍ: Usamos la función traductora ---
-        labs(
-          y = "Densidad de Distribución", 
-          x = etiqueta_humana_p1(input$comp_var2), 
-          fill = etiqueta_humana_p1(input$comp_var1)
-        ) +
-        # -------------------------------------------------
-        scale_fill_viridis_d(option = "inferno", begin = 0.1, end = 0.9) + 
-        theme_minimal(base_family = "sans") +
-        theme(
-          legend.position = "right", 
-          axis.text = element_text(size = 11), 
-          axis.title = element_text(size = 12)
-        )
+      if (es_discreta_ordinal) {
+        # Gráfico de barras apiladas al 100% para visualizar el nivel de severidad ordinal
+        p_grafico <- ggplot(df_clean, aes(x = factor(!!sym(input$comp_var1)), fill = factor(!!sym(input$comp_var2)))) +
+          geom_bar(position = "fill", color = "white", width = 0.6) +
+          scale_y_continuous(labels = scales::percent) +
+          labs(
+            y = "Proporción Relativa", 
+            x = etiqueta_humana_p1(input$comp_var1), 
+            fill = paste("Nivel de:", etiqueta_humana_p1(input$comp_var2))
+          ) +
+          scale_fill_viridis_d(option = "inferno", begin = 0.1, end = 0.9) +
+          theme_minimal(base_family = "sans") +
+          theme(legend.position = "right", axis.text = element_text(size = 11), axis.title = element_text(size = 12))
+      } else {
+        # Gráfico de densidad suave para continuas reales
+        p_grafico <- ggplot(df_clean, aes(x = !!sym(input$comp_var2), fill = factor(!!sym(input$comp_var1)))) +
+          geom_density(alpha = 0.5, color = NA) + 
+          labs(
+            y = "Densidad de Distribución", 
+            x = etiqueta_humana_p1(input$comp_var2), 
+            fill = paste("Grupos de:", etiqueta_humana_p1(input$comp_var1))
+          ) +
+          scale_fill_viridis_d(option = "viridis", begin = 0.1, end = 0.9) + 
+          theme_minimal(base_family = "sans") +
+          theme(legend.position = "right", axis.text = element_text(size = 11), axis.title = element_text(size = 12))
+      }
       
       return(list(tipo = "perm", texto = texto_html, plot = p_grafico))
     }
