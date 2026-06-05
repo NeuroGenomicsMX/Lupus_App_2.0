@@ -949,7 +949,7 @@ diccionario_modelado <- list(
   "Calidad de Vida y Estilo de Vida" = c(
     "Calidad de Vida Total" = "Calidad_de_vida_total",
     "Calidad de Vida (Psicológica)" = "Calidad_de_vida_dominio_psicologico",
-    "Índice de Calidad de Sueño" = "Indice_calidad_sueno",
+    #"Índice de Calidad de Sueño" = "Indice_calidad_sueno",
     "Dolor Corporal" = "Dolor_corporal",
     "Hábitos de Alimentación" = "clasi_ali_es"
   ),
@@ -1013,7 +1013,7 @@ diccionario_neuro_completo <- list(
     "Psicoticismo" = "Psicoticismo",
     "Calidad de Vida (Dominio Psicológico)" = "Calidad_de_vida_dominio_psicologico",
     "Calidad de Vida Total" = "Calidad_de_vida_total",
-    "Índice de Calidad de Sueño" = "Indice_calidad_sueno",
+    #"Índice de Calidad de Sueño" = "Indice_calidad_sueno",
     "Dolor Corporal" = "Dolor_corporal"
   ),
   
@@ -1114,7 +1114,7 @@ diccionario_reporte_gen <- list(
     "Psicoticismo" = "Psicoticismo",
     "Calidad de vida total" = "Calidad_de_vida_total",
     "Calidad de vida (dominio psicológico)" = "Calidad_de_vida_dominio_psicologico",
-    "Índice de calidad de sueño" = "Indice_calidad_sueno",
+    #"Índice de calidad de sueño" = "Indice_calidad_sueno",
     "Dolor corporal" = "Dolor_corporal",
     "Hábitos de alimentación" = "clasi_ali_es"
   ),
@@ -2001,6 +2001,7 @@ server <- function(input, output, session) {
       header_txt <- c(
         "==================================================",
         "REPORTE DESCRIPTIVO DEL REGISTRO MEXICANO DE LUPUS",
+        "Fuente: Registro Mexicano de Lupus",
         paste("Fecha de descarga:", Sys.time()),
         "==================================================",
         ""
@@ -2238,7 +2239,7 @@ server <- function(input, output, session) {
           labs(
             y = "Densidad de Distribución", 
             x = etiqueta_humana_p1(input$comp_var2), 
-            fill = paste("Grupos de:", etiqueta_humana_p1(input$comp_var1)),
+            fill = etiqueta_humana_p1(input$comp_var1),
             caption = "Fuente: Registro Mexicano de Lupus"
           ) +
           scale_fill_viridis_d(option = "viridis", begin = 0.1, end = 0.9) + 
@@ -2275,6 +2276,7 @@ server <- function(input, output, session) {
       encabezado <- c(
         "==================================================",
         "REGISTRO MEXICANO DE LUPUS - MÓDULO COMPARATIVAS",
+        "Fuente: Registro Mexicano de Lupus",
         paste("Fecha de emisión:", Sys.time()),
         paste("Variable de Agrupación (Grupos):", input$comp_var1),
         paste("Variable de Contraste Evaluada:", input$comp_var2),
@@ -2462,11 +2464,13 @@ server <- function(input, output, session) {
         }
       }
       
+
       # 5. Generar reporte técnico crudo
       raw_summary <- capture.output(summary(fit))
       header_tecnico <- c(
         "==================================================",
         "REPORTE TÉCNICO DE MODELADO ESTADÍSTICO GENERAL",
+        "Fuente: Registro Mexicano de Lupus",
         paste("Tipo de Modelo:", nombre_metodo),
         paste("Fecha de análisis:", Sys.time()),
         paste("Sujetos incluidos en la muestra (n):", n_sujetos),
@@ -2559,6 +2563,7 @@ server <- function(input, output, session) {
       header_tecnico <- c(
         "==================================================",
         "REPORTE TÉCNICO DE NEUROLUPUS",
+        "Fuente: Registro Mexicano de Lupus",
         paste("Fecha de análisis:", Sys.time()),
         paste("Sujetos incluidos en la muestra (n):", n_sujetos),
         "==================================================",
