@@ -43,7 +43,9 @@ required_packages <- c(
   "bslib",
   "nnet",
   "viridis",
-  "coin"
+  "coin",
+  "coin",
+  "shinylogs" # Nuevo
   )
 
 # Feature for automatically installing and downloading packages
@@ -1154,6 +1156,7 @@ diccionario_comparativas <- purrr::map(diccionario_reporte_gen, function(grupo) 
 
 # Interfaz de Usuario (UI)
 ui <- page_navbar(
+  use_tracking(), # <-- NUEVO: Activa el rastreo
   title = "LupusRGMX Data App",
   # Tema personalizado "Sitio Hermano LupusRGMX"
   theme = bs_theme(
@@ -1409,6 +1412,12 @@ ui <- page_navbar(
 
 # Lógica del Servidor (Server)
 server <- function(input, output, session) {
+  # --- NUEVO: Rastreador de actividad ---
+  track_usage(
+    storage_mode = store_rds(path = "logs/")
+  )
+  # --------------------------------------
+  
   
   # Se prueba diccionario para traducir a español los outpust
   # de los reportes técnicos
