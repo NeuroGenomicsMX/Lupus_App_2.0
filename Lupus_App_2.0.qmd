@@ -57,6 +57,7 @@ load_or_install <- function(packages) {
 }
 
 load_or_install(required_packages)
+Sys.setenv(LANGUAGE = "es")
 ```
 
 ## Development Guides
@@ -185,6 +186,7 @@ note de un vistazo qué cambia cuando ajusta la selección de variables.
 ### Explanation Pestaña 3
 
 ### Explanation Pestaña 4
+### Explanation Pestaña 5
 
 ## Loading datasets
 
@@ -1216,7 +1218,7 @@ ui <- page_navbar(
                   htmlOutput("txt_reporte_gen"),
                   br(), # Un pequeño salto de línea visual
                   # NUEVO: Botón de descarga con el estilo dorado integrado
-                  downloadButton("download_gen_summary", "Descargar Resumen Descriptivo (.txt)", class = "btn-success")
+                  downloadButton("download_gen_summary", "Descargar Resumen Descriptivo (.txt)", class = "btn-success fw-bold font-monospace")
       )
             )
   ),
@@ -1275,7 +1277,7 @@ ui <- page_navbar(
         ),
         hr(),
         # Botón de descarga de análisis de texto
-        downloadButton("download_comp", "Descargar Análisis (.txt)", class = "btn-success"),
+        downloadButton("download_comp", "Descargar Análisis (.txt)", class = "btn-success fw-bold font-monospace"),
         br(), br(), # Saltos de línea para espaciar
         # --- NUEVO: Botón de descarga del gráfico ---
         downloadButton("download_plot_comp", "Descargar Gráfico (PNG)", class = "btn-primary")
@@ -1284,6 +1286,13 @@ ui <- page_navbar(
       mainPanel(
         h3("Resultado del Análisis Comparativo"),
         uiOutput("txt_comparativa"),
+        
+        # --- DISCLAIMER ---
+        div(class = "alert alert-warning mt-3", 
+            "Aviso: Estas estadísticas automatizadas (frecuentistas) son solo exploratorias. Interprete con precaución y consulte a una persona experta para conclusiones definitivas."
+        ),
+        # -----------------------------
+        
         br(),
         plotOutput("plot_comparativa", height = "450px")
       )
@@ -1316,59 +1325,120 @@ ui <- page_navbar(
                   # Usamos verbatimTextOutput para respetar los saltos de línea (\n)
                   verbatimTextOutput("txt_reporte_modelo") 
                 ),
+                
+                # --- AQUÍ VA EL DISCLAIMER ---
+                div(class = "alert alert-warning mt-3", 
+                    "Aviso: Estas estadísticas automatizadas (frecuentistas) son solo exploratorias. Interprete con precaución y consulte a una persona experta para conclusiones definitivas."
+                ),
+  # -----------------------------
+                
                 br(),
-                downloadButton("download_modelo_summary", "Descargar Resumen Técnico (.txt)", class = "btn-success")
+                downloadButton("download_modelo_summary", "Descargar Resumen Técnico (.txt)", class = "btn-success fw-bold font-monospace")
               )
             )
   ),
   
-  # Pestaña 3: Neurolupus
+  # Pestaña 4: Neurolupus
+  # Pestaña 4: Neurolupus
   nav_panel(title = "Neurolupus",
-            # En la sección de la UI -> nav_panel(title = "Neurolupus", ...)
-sidebarLayout(
-  sidebarPanel(
-    h4("Análisis de Predicción Neurolupus"),
-    # Selección de Variable Objetivo
-    selectInput("neuro_target", "Variable Objetivo (Resultado):", 
-                choices = diccionario_neuro_completo),
-    
-    # Selección de Predictores (Máximo 5)
-    selectizeInput("neuro_predictors", "Variables Predictoras (Máximo 5):", 
-                   choices = diccionario_neuro_completo, 
-                   multiple = TRUE, 
-                   options = list(maxItems = 5)),
-    
-    hr(),
-    actionButton("run_neuro_model", "Efectuar Análisis Estadístico", class = "btn-primary")
-  ),
-  mainPanel(
-    h3("Reporte de Análisis Neurocognitivo"),
-    wellPanel(
-      verbatimTextOutput("txt_reporte_neuro_model")
-    ),
-    br(), # Un pequeño salto de línea visual
-    # Nuevo botón de descarga para el output técnico
-    downloadButton("download_neuro_summary", "Descargar Resumen Técnico (.txt)", class = "btn-success")
-  )
-)
+    sidebarLayout(
+      sidebarPanel(
+        h4("Análisis de Predicción Neurolupus"),
+        # Selección de Variable Objetivo
+        selectInput("neuro_target", "Variable Objetivo (Resultado):", 
+                    choices = diccionario_neuro_completo),
+        
+        # Selección de Predictores (Máximo 5)
+        selectizeInput("neuro_predictors", "Variables Predictoras (Máximo 5):", 
+                       choices = diccionario_neuro_completo, 
+                       multiple = TRUE, 
+                       options = list(maxItems = 5)),
+        
+        hr(),
+        actionButton("run_neuro_model", "Efectuar Análisis Estadístico", class = "btn-primary")
+      ),
+      mainPanel(
+        h3("Reporte de Análisis Neurocognitivo"),
+        wellPanel(
+          verbatimTextOutput("txt_reporte_neuro_model")
+        ),
+        
+        # --- DISCLAIMER ---
+        div(class = "alert alert-warning mt-3", 
+            "Aviso: Estas estadísticas automatizadas (frecuentistas) son solo exploratorias. Interprete con precaución y consulte a una persona experta para conclusiones definitivas."
+        ),
+        # -----------------------------
+        
+        br(), # Un pequeño salto de línea visual
+        # Nuevo botón de descarga para el output técnico
+        downloadButton("download_neuro_summary", "Descargar Resumen Técnico (.txt)", class = "btn-success fw-bold font-monospace")
+      )
+    )
   ),
   
   
-  # Pestaña 4: Acceso a Datos
+    # Pestaña 5: Acceso a Datos
   nav_panel(title = "Acceso a Datos",
             div(class = "container mt-5",
                 h2("Solicitud de Datos"),
                 p("Los datos crudos de este estudio se encuentran resguardados para proteger la privacidad de las y los participantes."),
-                p("Si eres investigador y deseas acceder a la base de datos para análisis colaborativos, por favor completa el formulario de solicitud formal."),
+                p("Si deseas acceder a la base de datos para análisis colaborativos, por favor completa el formulario de solicitud formal."),
                 br(),
-                a(href = "URL_DE_TU_REDCAP", target = "_blank", class = "btn btn-lg btn-success", "Ir al Formulario en RedCap")
+                a(href = "https://redcap.link/nqsxtj8n", target = "_blank", class = "btn btn-lg btn-success", "Ir al Formulario en RedCap"),
+                
+                # --- NUEVO BLOQUE DE CITA ---
+              hr(class = "my-5"),
+              h4("¿Cómo citar esta plataforma?"),
+              p("Si utilizas esta aplicación o sus resultados, por favor cita nuestro trabajo:"),
+              tags$blockquote(
+                class = "p-3 bg-light border-start border-4 border-primary",
+                tags$small(
+                  "Domingo Martínez, Driselda Sánchez-Aguirre, Grecia Sevilla-Parra, Itzel Olivares-Martínez, Fernanda Bravo-García, Ana Laura Hernández-Ledesma, Luis A. Aguilar, César Arturo Dominguez-Frausto, Jair García, Angélica Peña-Ayala, Deshiré Alpízar-Rodríguez, Lizbet Tinajero-Nieto, Sarael Alcauter, Alejandra Medina-Rivera. ",
+                  tags$strong("Building accessible resources to empower communities: the case of the Lupus Mexican Registry. "),
+                  tags$em("medRxiv "), "2026.06.11.26355300; doi: ",
+                  a(href = "https://doi.org/10.64898/2026.06.11.26355300", target = "_blank", "https://doi.org/10.64898/2026.06.11.26355300")
+                )
+              )
+              # -----------------------------
+                
+                
             )
   )
 )
 
-# Lógica del Servidor (Server)
+
 # Lógica del Servidor (Server)
 server <- function(input, output, session) {
+  
+  # Se prueba diccionario para traducir a español los outpust
+  # de los reportes técnicos
+  # ------------------------------------------------------------------
+  # Función para forzar la traducción del output de modelos
+  # ------------------------------------------------------------------
+  traducir_summary_tecnico <- function(texto) {
+    texto <- gsub("Call:", "Llamada:", texto, fixed = TRUE)
+    texto <- gsub("Residuals:", "Residuales:", texto, fixed = TRUE)
+    texto <- gsub("Coefficients:", "Coeficientes:", texto, fixed = TRUE)
+    texto <- gsub("Estimate", "Estimación", texto, fixed = TRUE)
+    texto <- gsub("Std. Error", "Error Est.", texto, fixed = TRUE)
+    texto <- gsub("t value", "Valor t", texto, fixed = TRUE)
+    texto <- gsub("z value", "Valor z", texto, fixed = TRUE)
+    texto <- gsub("Pr(>|t|)", "Valor p", texto, fixed = TRUE)
+    texto <- gsub("Pr(>|z|)", "Valor p", texto, fixed = TRUE)
+    texto <- gsub("Signif. codes:", "Códigos de significancia:", texto, fixed = TRUE)
+    texto <- gsub("Residual standard error:", "Error estándar residual:", texto, fixed = TRUE)
+    texto <- gsub("Multiple R-squared:", "R-cuadrado múltiple:", texto, fixed = TRUE)
+    texto <- gsub("Adjusted R-squared:", "R-cuadrado ajustado:", texto, fixed = TRUE)
+    texto <- gsub("F-statistic:", "Estadístico F:", texto, fixed = TRUE)
+    texto <- gsub("p-value:", "Valor p:", texto, fixed = TRUE)
+    texto <- gsub("degrees of freedom", "grados de libertad", texto, fixed = TRUE)
+    texto <- gsub(" on ", " en ", texto, fixed = TRUE)
+    texto <- gsub(" and ", " y ", texto, fixed = TRUE)
+    texto <- gsub(" DF,", " GL,", texto, fixed = TRUE)
+    # --- NUEVA LÍNEA PARA EL INTERCEPTO ---
+    texto <- gsub("(Intercept)", "(Intercepto)", texto, fixed = TRUE)
+    return(texto)
+  }
   
   # ==================================================================
   # Lógica Pestaña 1: Reporte General descriptivo
@@ -2004,6 +2074,9 @@ server <- function(input, output, session) {
         "Fuente: Registro Mexicano de Lupus",
         paste("Fecha de descarga:", Sys.time()),
         "==================================================",
+        "CITA SUGERIDA:",
+  "Martínez D, Sánchez-Aguirre D, et al. Building accessible resources to empower communities: the case of the Lupus Mexican Registry. medRxiv 2026.06.11.26355300; doi: https://doi.org/10.64898/2026.06.11.26355300",
+  "==================================================",
         ""
       )
       
@@ -2078,7 +2151,7 @@ server <- function(input, output, session) {
           "<p><b>Resultado del Modelo:</b> Estadístico &chi;<sup>2</sup> = ", round(prueba_chi$statistic, 3), 
           ", Grados de Libertad = ", prueba_chi$parameter, 
           ", p-valor = <b>", format.pval(p_val, digits = 4), "</b>.</p>",
-          "<p><b>Interpretación clínica simple:</b> Tomando un nivel de confianza estándar del 95%, se concluye que <b>", significativo, "</b> una asociación estadísticamente significativa entre las variables seleccionadas. ",
+          "<p><b>Interpretación:</b> Tomando un nivel de confianza estándar del 95%, se concluye que <b>", significativo, "</b> una asociación estadísticamente significativa entre las variables seleccionadas. ",
           ifelse(p_val < 0.05, 
                  "Esto indica que pertenecer a un grupo específico altera notablemente las proporciones de la otra variable.", 
                  "Esto sugiere que la distribución observada se mantiene proporcionalmente estable e independiente entre los grupos analizados."), "</p>"
@@ -2103,7 +2176,7 @@ server <- function(input, output, session) {
           y = "Frecuencia", 
           x = etiqueta_humana_p1(input$comp_var1), 
           fill = etiqueta_humana_p1(input$comp_var2),
-          caption = "Fuente: Registro Mexicano de Lupus"
+          caption = "Fuente: Registro Mexicano de Lupus, Martinez D, et al. medRxiv 2026; doi: 10.64898/2026.06.11.26355300"
         ) +
         scale_fill_viridis_d(option = "inferno", begin = 0.1, end = 0.9) +
         theme_minimal(base_family = "sans") +
@@ -2161,7 +2234,7 @@ server <- function(input, output, session) {
         # NO hay diferencias
         texto_html <- paste0(
           texto_html,
-          "<p><b>Interpretación clínica simple:</b> Tras comparar a los grupos de la muestra, se concluye que <b>NO existen diferencias estadísticamente significativas</b> (p = ", format.pval(p_val_global, digits = 4), "). ",
+          "<p><b>Interpretación:</b> Tras comparar a los grupos de la muestra, se concluye que <b>NO existen diferencias estadísticamente significativas</b> (p = ", format.pval(p_val_global, digits = 4), "). ",
           "Las ligeras variaciones visuales en el gráfico inferior son producto del azar, confirmando que el comportamiento de esta variable es similar entre los grupos analizados.</p>"
         )
       } else {
@@ -2210,7 +2283,7 @@ server <- function(input, output, session) {
           # 2.2 Solo hay 2 grupos
           texto_html <- paste0(
             texto_html,
-            "<p><b>Interpretación clínica simple:</b> Al contar con solo dos grupos, la prueba confirma directamente que <b>SÍ existen diferencias reales</b> entre ellos. El gráfico inferior ilustra cómo sus distribuciones se separan o concentran en rangos distintos, respaldando esta evidencia matemática.</p>"
+            "<p><b>Interpretación:</b> Al contar con solo dos grupos, la prueba confirma directamente que <b>SÍ existen diferencias reales</b> entre ellos. El gráfico inferior ilustra cómo sus distribuciones se separan o concentran en rangos distintos, respaldando esta evidencia matemática.</p>"
           )
         }
       }
@@ -2227,7 +2300,7 @@ server <- function(input, output, session) {
             y = "Proporción Relativa", 
             x = etiqueta_humana_p1(input$comp_var1), 
             fill = paste("Nivel de:", etiqueta_humana_p1(input$comp_var2)),
-            caption = "Fuente: Registro Mexicano de Lupus"
+            caption = "Fuente: Registro Mexicano de Lupus, Martinez D, et al. medRxiv 2026; doi: 10.64898/2026.06.11.26355300"
           ) +
           scale_fill_viridis_d(option = "inferno", begin = 0.1, end = 0.9) +
           theme_minimal(base_family = "sans") +
@@ -2240,7 +2313,7 @@ server <- function(input, output, session) {
             y = "Densidad de Distribución", 
             x = etiqueta_humana_p1(input$comp_var2), 
             fill = etiqueta_humana_p1(input$comp_var1),
-            caption = "Fuente: Registro Mexicano de Lupus"
+            caption = "Fuente: Registro Mexicano de Lupus, Martinez D, et al. medRxiv 2026; doi: 10.64898/2026.06.11.26355300"
           ) +
           scale_fill_viridis_d(option = "viridis", begin = 0.1, end = 0.9) + 
           theme_minimal(base_family = "sans") +
@@ -2281,6 +2354,9 @@ server <- function(input, output, session) {
         paste("Variable de Agrupación (Grupos):", input$comp_var1),
         paste("Variable de Contraste Evaluada:", input$comp_var2),
         "==================================================",
+        "CITA SUGERIDA:",
+  "Martínez D, Sánchez-Aguirre D, et al. Building accessible resources to empower communities: the case of the Lupus Mexican Registry. medRxiv 2026.06.11.26355300; doi: https://doi.org/10.64898/2026.06.11.26355300",
+  "==================================================",
         ""
       )
       
@@ -2466,7 +2542,7 @@ server <- function(input, output, session) {
       
 
       # 5. Generar reporte técnico crudo
-      raw_summary <- capture.output(summary(fit))
+      raw_summary <- traducir_summary_tecnico(capture.output(summary(fit)))
       header_tecnico <- c(
         "==================================================",
         "REPORTE TÉCNICO DE MODELADO ESTADÍSTICO GENERAL",
@@ -2475,6 +2551,9 @@ server <- function(input, output, session) {
         paste("Fecha de análisis:", Sys.time()),
         paste("Sujetos incluidos en la muestra (n):", n_sujetos),
         "==================================================",
+        "CITA SUGERIDA:",
+  "Martínez D, Sánchez-Aguirre D, et al. Building accessible resources to empower communities: the case of the Lupus Mexican Registry. medRxiv 2026.06.11.26355300; doi: https://doi.org/10.64898/2026.06.11.26355300",
+  "==================================================",
         ""
       )
       
@@ -2494,13 +2573,13 @@ server <- function(input, output, session) {
     modelo_general_reactivo()$texto_humano
   })
 
-  # Descargar output técnico de la Pestaña 2
+  # Descargar output técnico de la Pestaña 3
   output$download_modelo_summary <- downloadHandler(
     filename = function() { paste("Resumen_Modelo_General_", Sys.Date(), ".txt", sep = "") },
     content = function(file) { writeLines(modelo_general_reactivo()$texto_tecnico, file) }
   )
 
-  # --- Lógica Pestaña 3: Neurolupus ---
+  # --- Lógica Pestaña 4: Neurolupus ---
   
   modelo_neuro_reactivo <- eventReactive(input$run_neuro_model, {
     req(input$neuro_target, input$neuro_predictors)
@@ -2559,7 +2638,7 @@ server <- function(input, output, session) {
       if(!is_binary) reporte_lineas <- c(reporte_lineas, "", paste("AJUSTE: El modelo explica el", r_sq, "% de la variabilidad observada."))
       
       # 3. Preparar el Resumen Técnico con el N de la muestra
-      raw_summary <- capture.output(summary(fit))
+      raw_summary <- traducir_summary_tecnico(capture.output(summary(fit)))
       header_tecnico <- c(
         "==================================================",
         "REPORTE TÉCNICO DE NEUROLUPUS",
@@ -2567,6 +2646,9 @@ server <- function(input, output, session) {
         paste("Fecha de análisis:", Sys.time()),
         paste("Sujetos incluidos en la muestra (n):", n_sujetos),
         "==================================================",
+        "CITA SUGERIDA:",
+  "Martínez D, Sánchez-Aguirre D, et al. Building accessible resources to empower communities: the case of the Lupus Mexican Registry. medRxiv 2026.06.11.26355300; doi: https://doi.org/10.64898/2026.06.11.26355300",
+  "==================================================",
         ""
       )
       
@@ -2581,12 +2663,12 @@ server <- function(input, output, session) {
     })
   })
 
-  # Renderizar el texto en la pantalla de la app (Pestaña 3)
+  # Renderizar el texto en la pantalla de la app (Pestaña 4)
   output$txt_reporte_neuro_model <- renderText({
     modelo_neuro_reactivo()$texto_humano
   })
 
-  # Manejar la descarga del archivo técnico (Pestaña 3)
+  # Manejar la descarga del archivo técnico (Pestaña 4)
   output$download_neuro_summary <- downloadHandler(
     filename = function() {
       paste("Resumen_Estadistico_Neurolupus_", Sys.Date(), ".txt", sep = "")
