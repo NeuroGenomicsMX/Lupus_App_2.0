@@ -1,4 +1,4 @@
-## ----setup, include=FALSE--------------------------------------------------------------------------
+## ----setup, include=FALSE------------------------------------------------------------------------
 # Packages used in the project
 required_packages <- c(
   "tidyverse",
@@ -6,7 +6,9 @@ required_packages <- c(
   "bslib",
   "nnet",
   "viridis",
-  "coin"
+  "coin",
+  "coin",
+  "shinylogs" # Nuevo
   )
 
 # Feature for automatically installing and downloading packages
@@ -23,7 +25,7 @@ load_or_install(required_packages)
 Sys.setenv(LANGUAGE = "es")
 
 
-## --------------------------------------------------------------------------------------------------
+## ------------------------------------------------------------------------------------------------
 #| label: Load dataset
 
 path = "Data/base_de_datos_sin_registros_duplicados_ LupusProjectProducti_DATA_2026-05-11_2035.csv sin_col_vacias_con_suma_SLICC_SLEDAI_pred_dosis_categ_dx_time_curado.csv"
@@ -48,7 +50,7 @@ lupus_data_2 <- load_lupus_data(path_2)
 
 
 
-## --------------------------------------------------------------------------------------------------
+## ------------------------------------------------------------------------------------------------
 #| label: Selecting variables
 
 # Filter age
@@ -124,7 +126,7 @@ lupus_data <- lupus_data %>%
   na.omit()
 
 
-## --------------------------------------------------------------------------------------------------
+## ------------------------------------------------------------------------------------------------
 #| label: Formating dataset 01
 
 lupus_data <- lupus_data %>% 
@@ -462,7 +464,7 @@ formated_lupus_data <- formated_lupus_data %>%
 glimpse(formated_lupus_data)
 
 
-## --------------------------------------------------------------------------------------------------
+## ------------------------------------------------------------------------------------------------
 #| label: Formatind Dataset 02
 glimpse(lupus_data_2)
 lupus_data_2 <- lupus_data_2 %>% 
@@ -533,7 +535,7 @@ glimpse(formated_lupus_data_2)
 
 
 
-## --------------------------------------------------------------------------------------------------
+## ------------------------------------------------------------------------------------------------
 #| label: Renaming variables
 
 formated_lupus_data <- formated_lupus_data %>%
@@ -606,7 +608,7 @@ formated_lupus_data
 glimpse(formated_lupus_data)
 
 
-## --------------------------------------------------------------------------------------------------
+## ------------------------------------------------------------------------------------------------
 #| label: Joint Neurolupus Dataset
 
 # Unimos la base de datos de neuroimagen con los datos clínicos generales
@@ -680,7 +682,7 @@ glimpse(formated_neurolupus_data_02)
 
 
 
-## --------------------------------------------------------------------------------------------------
+## ------------------------------------------------------------------------------------------------
 #| label: Pestaña 1 - Pre-procesamiento de variables de daño orgánico
 # ---------------------------------------------------------------------
 # IMPORTANTE: según data_curating_app_1_2.qmd, las variables de daño
@@ -732,7 +734,7 @@ glimpse(
 )
 
 
-## --------------------------------------------------------------------------------------------------
+## ------------------------------------------------------------------------------------------------
 #| label: Neurolupus dictionary
 
 # Diccionario general para el módulo de Modelado Estadístico
@@ -964,13 +966,14 @@ diccionario_comparativas <- purrr::map(diccionario_reporte_gen, function(grupo) 
 
 
 
-## --------------------------------------------------------------------------------------------------
+## ------------------------------------------------------------------------------------------------
 #| label: Lupus App
 
 # Procesamiento de datos
 
 # Interfaz de Usuario (UI)
 ui <- page_navbar(
+  use_tracking(), # <-- NUEVO: Activa el rastreo
   title = "LupusRGMX Data App",
   # Tema personalizado "Sitio Hermano LupusRGMX"
   theme = bs_theme(
@@ -1226,6 +1229,12 @@ ui <- page_navbar(
 
 # Lógica del Servidor (Server)
 server <- function(input, output, session) {
+  # --- NUEVO: Rastreador de actividad ---
+  track_usage(
+    storage_mode = store_rds(path = "logs/")
+  )
+  # --------------------------------------
+  
   
   # Se prueba diccionario para traducir a español los outpust
   # de los reportes técnicos
