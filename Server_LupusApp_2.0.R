@@ -1,10 +1,12 @@
-## ----setup, include=FALSE----------------------------------
+## ----setup, include=FALSE--------------------------------------------------------------------------
 # Packages used in the project
 required_packages <- c(
   "tidyverse",
   "shiny",
   "bslib",
-  "nnet"
+  "nnet",
+  "viridis",
+  "coin"
   )
 
 # Feature for automatically installing and downloading packages
@@ -18,9 +20,10 @@ load_or_install <- function(packages) {
 }
 
 load_or_install(required_packages)
+Sys.setenv(LANGUAGE = "es")
 
 
-## ----------------------------------------------------------
+## --------------------------------------------------------------------------------------------------
 #| label: Load dataset
 
 path = "Data/base_de_datos_sin_registros_duplicados_ LupusProjectProducti_DATA_2026-05-11_2035.csv sin_col_vacias_con_suma_SLICC_SLEDAI_pred_dosis_categ_dx_time_curado.csv"
@@ -45,7 +48,7 @@ lupus_data_2 <- load_lupus_data(path_2)
 
 
 
-## ----------------------------------------------------------
+## --------------------------------------------------------------------------------------------------
 #| label: Selecting variables
 
 # Filter age
@@ -121,7 +124,7 @@ lupus_data <- lupus_data %>%
   na.omit()
 
 
-## ----------------------------------------------------------
+## --------------------------------------------------------------------------------------------------
 #| label: Formating dataset 01
 
 lupus_data <- lupus_data %>% 
@@ -148,6 +151,37 @@ formated_lupus_data <- lupus_data %>%
       )
     ),
     
+    # --- DAÑOS A NUMÉRICAS DISCRETAS ---
+        Renal = suppressWarnings(as.integer(Renal)),
+        Neuropsychiatric = suppressWarnings(as.integer(Neuropsychiatric)),
+        Pulmonary = suppressWarnings(as.integer(Pulmonary)),
+        Cardiovascular = suppressWarnings(as.integer(Cardiovascular)),
+        Peripheral.vascular = suppressWarnings(as.integer(Peripheral.vascular)),
+        Musculoskeletal = suppressWarnings(as.integer(Musculoskeletal)),
+        Skin = suppressWarnings(as.integer(Skin)),
+        Ocular = suppressWarnings(as.integer(Ocular)),
+        Cardiomyopathy = suppressWarnings(as.integer(Cardiomyopathy)),
+        Gastrointestinal = suppressWarnings(as.integer(Gastrointestinal)),
+        
+        # --- VARIABLES CATEGÓRICAS (1 = Sí, 0 = No, 2 = NA) ---
+        Premature.gonadal = factor(
+          suppressWarnings(as.integer(Premature.gonadal)),
+          levels = c(0, 1),
+          labels = c("No", "Sí")
+        ),
+        
+        Diabetes = factor(
+          suppressWarnings(as.integer(Diabetes)),
+          levels = c(0, 1),
+          labels = c("No", "Sí")
+        ),
+        
+        Malignancy = factor(
+          # Condicional para atrapar explícitamente el 2 y convertirlo en NA (Vacío)
+          ifelse(suppressWarnings(as.integer(Malignancy)) == 2, NA, suppressWarnings(as.integer(Malignancy))),
+          levels = c(0, 1),
+          labels = c("No", "Sí")
+        ),
     
     clasi_ali = suppressWarnings(as.numeric(clasi_ali)),
     
@@ -312,7 +346,8 @@ formated_lupus_data <- lupus_data %>%
   )
 ),
 
-uses_corticosteroids = prednisolona != "No"
+uses_corticosteroids = prednisolona != "No",
+
   )
 
 treatment_labels <- c(
@@ -421,12 +456,13 @@ formated_lupus_data <- formated_lupus_data %>%
           )
         )
     )
+    
   )
 
 glimpse(formated_lupus_data)
 
 
-## ----------------------------------------------------------
+## --------------------------------------------------------------------------------------------------
 #| label: Formatind Dataset 02
 glimpse(lupus_data_2)
 lupus_data_2 <- lupus_data_2 %>% 
@@ -497,7 +533,7 @@ glimpse(formated_lupus_data_2)
 
 
 
-## ----------------------------------------------------------
+## --------------------------------------------------------------------------------------------------
 #| label: Renaming variables
 
 formated_lupus_data <- formated_lupus_data %>%
@@ -570,7 +606,7 @@ formated_lupus_data
 glimpse(formated_lupus_data)
 
 
-## ----------------------------------------------------------
+## --------------------------------------------------------------------------------------------------
 #| label: Joint Neurolupus Dataset
 
 # Unimos la base de datos de neuroimagen con los datos clínicos generales
@@ -644,7 +680,7 @@ glimpse(formated_neurolupus_data_02)
 
 
 
-## ----------------------------------------------------------
+## --------------------------------------------------------------------------------------------------
 #| label: Pestaña 1 - Pre-procesamiento de variables de daño orgánico
 # ---------------------------------------------------------------------
 # IMPORTANTE: según data_curating_app_1_2.qmd, las variables de daño
@@ -661,19 +697,19 @@ glimpse(formated_neurolupus_data_02)
 # ---------------------------------------------------------------------
 
 danio_organico_vars <- c(
-  "Danio_ocular",
-  "Danio_neuropsiquiatrico",
-  "Danio_renal",
-  "Danio_pulmonar",
-  "Danio_cardiovascular",
-  "Danio_cardiomiopatia",
-  "Danio_vascular_periferico",
-  "Danio_gastrointestinal",
-  "Danio_musculoesquletico",
-  "Danio_cutaneo",
-  "Fallo_gonadal_prematuro",
-  "Padece_diabetes",
-  "Presenta_cancer"
+  #"Danio_ocular",
+  #"Danio_neuropsiquiatrico",
+  #"Danio_renal",
+  #"Danio_pulmonar",
+  #"Danio_cardiovascular",
+ # "Danio_cardiomiopatia",
+  #"Danio_vascular_periferico",
+#  "Danio_gastrointestinal"
+  #"Danio_musculoesquletico",
+  #"Danio_cutaneo",
+  #"Fallo_gonadal_prematuro",
+  #"Padece_diabetes",
+  #"Presenta_cancer"
 )
 
 # Creamos una copia local del dataset SOLO para la Pestaña 1.
@@ -696,7 +732,7 @@ glimpse(
 )
 
 
-## ----------------------------------------------------------
+## --------------------------------------------------------------------------------------------------
 #| label: Neurolupus dictionary
 
 # Diccionario general para el módulo de Modelado Estadístico
@@ -735,7 +771,7 @@ diccionario_modelado <- list(
   "Calidad de Vida y Estilo de Vida" = c(
     "Calidad de Vida Total" = "Calidad_de_vida_total",
     "Calidad de Vida (Psicológica)" = "Calidad_de_vida_dominio_psicologico",
-    "Índice de Calidad de Sueño" = "Indice_calidad_sueno",
+    #"Índice de Calidad de Sueño" = "Indice_calidad_sueno",
     "Dolor Corporal" = "Dolor_corporal",
     "Hábitos de Alimentación" = "clasi_ali_es"
   ),
@@ -754,7 +790,7 @@ diccionario_modelado <- list(
     "Escolaridad" = "Escolaridad",
     "Ocupación" = "Ocupacion",
     "Nivel Socioeconómico" = "Nivel_socioeconomico",
-    "Estado de Residencia" = "Estado_de_residencia",
+    #"Estado de Residencia" = "Estado_de_residencia",
     "Comorbilidades Adicionales" = "Comorbilidades",
     "Tiene familiar con LES" = "Tiene_familiar_con_LES"
   )
@@ -799,7 +835,7 @@ diccionario_neuro_completo <- list(
     "Psicoticismo" = "Psicoticismo",
     "Calidad de Vida (Dominio Psicológico)" = "Calidad_de_vida_dominio_psicologico",
     "Calidad de Vida Total" = "Calidad_de_vida_total",
-    "Índice de Calidad de Sueño" = "Indice_calidad_sueno",
+    #"Índice de Calidad de Sueño" = "Indice_calidad_sueno",
     "Dolor Corporal" = "Dolor_corporal"
   ),
   
@@ -900,7 +936,7 @@ diccionario_reporte_gen <- list(
     "Psicoticismo" = "Psicoticismo",
     "Calidad de vida total" = "Calidad_de_vida_total",
     "Calidad de vida (dominio psicológico)" = "Calidad_de_vida_dominio_psicologico",
-    "Índice de calidad de sueño" = "Indice_calidad_sueno",
+    #"Índice de calidad de sueño" = "Indice_calidad_sueno",
     "Dolor corporal" = "Dolor_corporal",
     "Hábitos de alimentación" = "clasi_ali_es"
   ),
@@ -913,9 +949,22 @@ diccionario_reporte_gen <- list(
   )
 )
 
+# ---------------------------------------------------------------------
+# Diccionario para la Pestaña 2: Comparativas
+# ---------------------------------------------------------------------
+# Es idéntico al reporte general, pero excluye las variables geográficas 
+# de 32 niveles para evitar el colapso visual y estadístico.
+diccionario_comparativas <- purrr::map(diccionario_reporte_gen, function(grupo) {
+  grupo[!grupo %in% c("Estado_de_residencia", 
+                      "Estado_de_nacimiento",
+                      "family_member_sle_summary",
+                      "treatment_summary",
+                      "treatment_profile")]
+})
 
 
-## ----------------------------------------------------------
+
+## --------------------------------------------------------------------------------------------------
 #| label: Lupus App
 
 # Procesamiento de datos
@@ -965,6 +1014,10 @@ ui <- page_navbar(
                   "Mexicano de Lupus para las variables elegidas. ",
                   "Los valores calculados se resaltan en morado."
                 ),
+                
+                # --- NUEVO: Casilla para seleccionar todas ---
+                checkboxInput("select_all_gen", "Seleccionar todas las variables", value = FALSE),
+                
                 selectizeInput(
                   inputId  = "var_gen",
                   label    = "Variables:",
@@ -982,13 +1035,89 @@ ui <- page_navbar(
                   htmlOutput("txt_reporte_gen"),
                   br(), # Un pequeño salto de línea visual
                   # NUEVO: Botón de descarga con el estilo dorado integrado
-                  downloadButton("download_gen_summary", "Descargar Resumen Descriptivo (.txt)", class = "btn-success")
+                  downloadButton("download_gen_summary", "Descargar Resumen Descriptivo (.txt)", class = "btn-success fw-bold font-monospace")
       )
             )
   ),
   
   
-  # Pestaña 2: Modelado Estadístico
+  # Pestaña 2: Comparativas
+  
+  # --- NUEVA PESTAÑA: COMPARATIVAS ---
+  nav_panel(
+    title = "Comparativas",
+    sidebarLayout(
+      sidebarPanel(
+        h4("Configuración del Análisis"),
+        p("Cruza variables del registro para identificar asociaciones significativas."),
+        br(),
+        
+        # Variable 1: Estrictamente Categórica para formar los grupos de comparación
+        # Variable 1: Estrictamente Categórica para formar los grupos de comparación
+        selectInput(
+          inputId = "comp_var1",
+          label = "Variable de Agrupación (Eje X / Grupos):",
+          choices = list(
+            "Sociodemográficos" = c(
+              "Sexo" = "Sexo",
+              "Escolaridad" = "Escolaridad",
+              "Ocupación" = "Ocupacion"
+            ),
+            "Historia Clínica y Estilo de Vida" = c(
+              "Actividad del LES" = "Actividad_del_LES",
+              "Hábitos de alimentación" = "clasi_ali_es",
+              "Tiene familiar con LES" = "Tiene_familiar_con_LES",
+              "Familiar de 1er grado con LES" = "has_first_degree_sle"
+            ),
+            "Tratamientos Médicos" = c(
+              "¿Recibe algún tratamiento?" = "any_treatment",
+              "¿Usa corticoesteroides?" = "uses_corticosteroids",
+              "Usa Antimaláricos" = "Tratamiento_con_antimalaricos",
+              "Usa Rituximab" = "Tratamiento_con_rituximab",
+              "Usa Ciclofosfamida" = "Tratamiento_con_ciclofosfamida"
+            ),
+            "Comorbilidades y Condiciones" = c(
+              "Fallo Gonadal Prematuro" = "Fallo_gonadal_prematuro",
+              "Padece Diabetes" = "Padece_diabetes",
+              "Presenta Cáncer" = "Presenta_cancer"
+            )
+          ),
+          selected = "Actividad_del_LES"
+        ),
+        
+        # Variable 2: Dinámica (Acepta categóricas o numéricas continuas)
+        selectizeInput(
+          inputId = "comp_var2",
+          label = "Variable a Comparar:",
+          choices = diccionario_comparativas, 
+          selected = "Edad"
+        ),
+        hr(),
+        # Botón de descarga de análisis de texto
+        downloadButton("download_comp", "Descargar Análisis (.txt)", class = "btn-success fw-bold font-monospace"),
+        br(), br(), # Saltos de línea para espaciar
+        # --- NUEVO: Botón de descarga del gráfico ---
+        downloadButton("download_plot_comp", "Descargar Gráfico (PNG)", class = "btn-primary")
+      ),
+      
+      mainPanel(
+        h3("Resultado del Análisis Comparativo"),
+        uiOutput("txt_comparativa"),
+        
+        # --- DISCLAIMER ---
+        div(class = "alert alert-warning mt-3", 
+            "Aviso: Estas estadísticas automatizadas (frecuentistas) son solo exploratorias. Interprete con precaución y consulte a una persona experta para conclusiones definitivas."
+        ),
+        # -----------------------------
+        
+        br(),
+        plotOutput("plot_comparativa", height = "450px")
+      )
+    )
+  ),
+  
+  
+  # Pestaña 3: Modelado Estadístico
   nav_panel(title = "Modelado Estadístico",
             sidebarLayout(
               sidebarPanel(
@@ -1013,59 +1142,120 @@ ui <- page_navbar(
                   # Usamos verbatimTextOutput para respetar los saltos de línea (\n)
                   verbatimTextOutput("txt_reporte_modelo") 
                 ),
+                
+                # --- AQUÍ VA EL DISCLAIMER ---
+                div(class = "alert alert-warning mt-3", 
+                    "Aviso: Estas estadísticas automatizadas (frecuentistas) son solo exploratorias. Interprete con precaución y consulte a una persona experta para conclusiones definitivas."
+                ),
+  # -----------------------------
+                
                 br(),
-                downloadButton("download_modelo_summary", "Descargar Resumen Técnico (.txt)", class = "btn-success")
+                downloadButton("download_modelo_summary", "Descargar Resumen Técnico (.txt)", class = "btn-success fw-bold font-monospace")
               )
             )
   ),
   
-  # Pestaña 3: Neurolupus
+  # Pestaña 4: Neurolupus
+  # Pestaña 4: Neurolupus
   nav_panel(title = "Neurolupus",
-            # En la sección de la UI -> nav_panel(title = "Neurolupus", ...)
-sidebarLayout(
-  sidebarPanel(
-    h4("Análisis de Predicción Neurolupus"),
-    # Selección de Variable Objetivo
-    selectInput("neuro_target", "Variable Objetivo (Resultado):", 
-                choices = diccionario_neuro_completo),
-    
-    # Selección de Predictores (Máximo 5)
-    selectizeInput("neuro_predictors", "Variables Predictoras (Máximo 5):", 
-                   choices = diccionario_neuro_completo, 
-                   multiple = TRUE, 
-                   options = list(maxItems = 5)),
-    
-    hr(),
-    actionButton("run_neuro_model", "Efectuar Análisis Estadístico", class = "btn-primary")
-  ),
-  mainPanel(
-    h3("Reporte de Análisis Neurocognitivo"),
-    wellPanel(
-      verbatimTextOutput("txt_reporte_neuro_model")
-    ),
-    br(), # Un pequeño salto de línea visual
-    # Nuevo botón de descarga para el output técnico
-    downloadButton("download_neuro_summary", "Descargar Resumen Técnico (.txt)", class = "btn-success")
-  )
-)
+    sidebarLayout(
+      sidebarPanel(
+        h4("Análisis de Predicción Neurolupus"),
+        # Selección de Variable Objetivo
+        selectInput("neuro_target", "Variable Objetivo (Resultado):", 
+                    choices = diccionario_neuro_completo),
+        
+        # Selección de Predictores (Máximo 5)
+        selectizeInput("neuro_predictors", "Variables Predictoras (Máximo 5):", 
+                       choices = diccionario_neuro_completo, 
+                       multiple = TRUE, 
+                       options = list(maxItems = 5)),
+        
+        hr(),
+        actionButton("run_neuro_model", "Efectuar Análisis Estadístico", class = "btn-primary")
+      ),
+      mainPanel(
+        h3("Reporte de Análisis Neurocognitivo"),
+        wellPanel(
+          verbatimTextOutput("txt_reporte_neuro_model")
+        ),
+        
+        # --- DISCLAIMER ---
+        div(class = "alert alert-warning mt-3", 
+            "Aviso: Estas estadísticas automatizadas (frecuentistas) son solo exploratorias. Interprete con precaución y consulte a una persona experta para conclusiones definitivas."
+        ),
+        # -----------------------------
+        
+        br(), # Un pequeño salto de línea visual
+        # Nuevo botón de descarga para el output técnico
+        downloadButton("download_neuro_summary", "Descargar Resumen Técnico (.txt)", class = "btn-success fw-bold font-monospace")
+      )
+    )
   ),
   
   
-  # Pestaña 4: Acceso a Datos
+    # Pestaña 5: Acceso a Datos
   nav_panel(title = "Acceso a Datos",
             div(class = "container mt-5",
                 h2("Solicitud de Datos"),
                 p("Los datos crudos de este estudio se encuentran resguardados para proteger la privacidad de las y los participantes."),
-                p("Si eres investigador y deseas acceder a la base de datos para análisis colaborativos, por favor completa el formulario de solicitud formal."),
+                p("Si deseas acceder a la base de datos para análisis colaborativos, por favor completa el formulario de solicitud formal."),
                 br(),
-                a(href = "URL_DE_TU_REDCAP", target = "_blank", class = "btn btn-lg btn-success", "Ir al Formulario en RedCap")
+                a(href = "https://redcap.link/nqsxtj8n", target = "_blank", class = "btn btn-lg btn-success", "Ir al Formulario en RedCap"),
+                
+                # --- NUEVO BLOQUE DE CITA ---
+              hr(class = "my-5"),
+              h4("¿Cómo citar esta plataforma?"),
+              p("Si utilizas esta aplicación o sus resultados, por favor cita nuestro trabajo:"),
+              tags$blockquote(
+                class = "p-3 bg-light border-start border-4 border-primary",
+                tags$small(
+                  "Domingo Martínez, Driselda Sánchez-Aguirre, Grecia Sevilla-Parra, Itzel Olivares-Martínez, Fernanda Bravo-García, Ana Laura Hernández-Ledesma, Luis A. Aguilar, César Arturo Dominguez-Frausto, Jair García, Angélica Peña-Ayala, Deshiré Alpízar-Rodríguez, Lizbet Tinajero-Nieto, Sarael Alcauter, Alejandra Medina-Rivera. ",
+                  tags$strong("Building accessible resources to empower communities: the case of the Lupus Mexican Registry. "),
+                  tags$em("medRxiv "), "2026.06.11.26355300; doi: ",
+                  a(href = "https://doi.org/10.64898/2026.06.11.26355300", target = "_blank", "https://doi.org/10.64898/2026.06.11.26355300")
+                )
+              )
+              # -----------------------------
+                
+                
             )
   )
 )
 
-# Lógica del Servidor (Server)
+
 # Lógica del Servidor (Server)
 server <- function(input, output, session) {
+  
+  # Se prueba diccionario para traducir a español los outpust
+  # de los reportes técnicos
+  # ------------------------------------------------------------------
+  # Función para forzar la traducción del output de modelos
+  # ------------------------------------------------------------------
+  traducir_summary_tecnico <- function(texto) {
+    texto <- gsub("Call:", "Llamada:", texto, fixed = TRUE)
+    texto <- gsub("Residuals:", "Residuales:", texto, fixed = TRUE)
+    texto <- gsub("Coefficients:", "Coeficientes:", texto, fixed = TRUE)
+    texto <- gsub("Estimate", "Estimación", texto, fixed = TRUE)
+    texto <- gsub("Std. Error", "Error Est.", texto, fixed = TRUE)
+    texto <- gsub("t value", "Valor t", texto, fixed = TRUE)
+    texto <- gsub("z value", "Valor z", texto, fixed = TRUE)
+    texto <- gsub("Pr(>|t|)", "Valor p", texto, fixed = TRUE)
+    texto <- gsub("Pr(>|z|)", "Valor p", texto, fixed = TRUE)
+    texto <- gsub("Signif. codes:", "Códigos de significancia:", texto, fixed = TRUE)
+    texto <- gsub("Residual standard error:", "Error estándar residual:", texto, fixed = TRUE)
+    texto <- gsub("Multiple R-squared:", "R-cuadrado múltiple:", texto, fixed = TRUE)
+    texto <- gsub("Adjusted R-squared:", "R-cuadrado ajustado:", texto, fixed = TRUE)
+    texto <- gsub("F-statistic:", "Estadístico F:", texto, fixed = TRUE)
+    texto <- gsub("p-value:", "Valor p:", texto, fixed = TRUE)
+    texto <- gsub("degrees of freedom", "grados de libertad", texto, fixed = TRUE)
+    texto <- gsub(" on ", " en ", texto, fixed = TRUE)
+    texto <- gsub(" and ", " y ", texto, fixed = TRUE)
+    texto <- gsub(" DF,", " GL,", texto, fixed = TRUE)
+    # --- NUEVA LÍNEA PARA EL INTERCEPTO ---
+    texto <- gsub("(Intercept)", "(Intercepto)", texto, fixed = TRUE)
+    return(texto)
+  }
   
   # ==================================================================
   # Lógica Pestaña 1: Reporte General descriptivo
@@ -1081,6 +1271,27 @@ server <- function(input, output, session) {
   # - htmlOutput permite renderizar el HTML directamente.
   #
   # 
+  
+  # ==================================================================
+  # Lógica Pestaña 1: Reporte General descriptivo
+  # ==================================================================
+  datos_reporte_gen <- datos_pestana1
+
+  # ------------------------------------------------------------------
+  # Observador para la casilla "Seleccionar todas"
+  # ------------------------------------------------------------------
+  observeEvent(input$select_all_gen, {
+    if (input$select_all_gen) {
+      # Extrae todos los valores internos del diccionario colapsando las sublistas
+      todas_las_vars <- unname(unlist(diccionario_reporte_gen))
+      
+      updateSelectizeInput(session, "var_gen", selected = todas_las_vars)
+    } else {
+      # Si se desmarca, regresa a la selección predeterminada básica
+      updateSelectizeInput(session, "var_gen", selected = c("Edad", "Sexo", "Actividad_del_LES"))
+    }
+  })
+  
   datos_reporte_gen <- datos_pestana1
 
   # Diccionario plano (etiqueta humana -> nombre interno)
@@ -1145,6 +1356,21 @@ server <- function(input, output, session) {
   #   el % de personas en bajo, intermedio y alto según terciles del
   #   rango teórico (no del registro). Mayor puntaje = mayor severidad.
   # ==================================================================
+  
+  # Plantilla de interpretación para los puntajes de daño a órganos
+  info_danio_ordinal <- list(
+    tipo = "categorias_clinicas",
+    cortes = c(0, 1, 2, 3, Inf),
+    cerrado_izq = TRUE,
+    etiquetas = c(
+      "0 puntos (sin daño acumulado)",
+      "1 punto de daño",
+      "2 puntos de daño",
+      "3 o más puntos de daño"
+    ),
+    nota = "El puntaje refleja la cantidad de afectaciones específicas acumuladas en este órgano."
+  )
+  
   catalogo_numerico_p1 <- list(
     # --- Variables de conteo / tiempo: tiene sentido el promedio ---
     Edad                          = list(tipo = "conteo", unidad = "años"),
@@ -1154,6 +1380,18 @@ server <- function(input, output, session) {
     total_treatments              = list(tipo = "conteo", unidad = "tratamientos"),
     num_family_members_sle        = list(tipo = "conteo", unidad = "familiares"),
 
+    # --- Variables de Daño a Órganos (Conteos Discretos Ordinales) ---
+    Danio_ocular              = info_danio_ordinal,
+    Danio_neuropsiquiatrico   = info_danio_ordinal,
+    Danio_renal               = info_danio_ordinal,
+    Danio_pulmonar            = info_danio_ordinal,
+    Danio_cardiovascular      = info_danio_ordinal,
+    Danio_cardiomiopatia      = info_danio_ordinal,
+    Danio_vascular_periferico = info_danio_ordinal,
+    Danio_gastrointestinal    = info_danio_ordinal,
+    Danio_musculoesquletico   = info_danio_ordinal,
+    Danio_cutaneo             = info_danio_ordinal,
+    
     # --- SLEDAI: umbral validado (>= 6 enfermedad activa) ---
     Sledai = list(
       tipo = "umbral_simple",
@@ -1650,8 +1888,12 @@ server <- function(input, output, session) {
       header_txt <- c(
         "==================================================",
         "REPORTE DESCRIPTIVO DEL REGISTRO MEXICANO DE LUPUS",
+        "Fuente: Registro Mexicano de Lupus",
         paste("Fecha de descarga:", Sys.time()),
         "==================================================",
+        "CITA SUGERIDA:",
+  "Martínez D, Sánchez-Aguirre D, et al. Building accessible resources to empower communities: the case of the Lupus Mexican Registry. medRxiv 2026.06.11.26355300; doi: https://doi.org/10.64898/2026.06.11.26355300",
+  "==================================================",
         ""
       )
       
@@ -1660,7 +1902,319 @@ server <- function(input, output, session) {
     }
   )
   
-  # --- Lógica Pestaña 2: Modelado Estadístico ---
+  # Pestaña 2: Comparativas Dinámicas
+  
+  # ------------------------------------------------------------------
+  # Lógica de la Pestaña: Comparativas Dinámicas
+  # ------------------------------------------------------------------
+  
+  # Expresión reactiva principal que decide el tipo de prueba y calcula los resultados
+  
+  # ------------------------------------------------------------------
+  # Lógica de la Pestaña: Comparativas Dinámicas
+  # ------------------------------------------------------------------
+  analisis_comparativa <- reactive({
+    req(input$comp_var1, input$comp_var2)
+    
+    # Filtrar el dataframe con las variables seleccionadas eliminando filas vacías (NA)
+    df_clean <- formated_lupus_data %>% 
+      select(all_of(c(input$comp_var1, input$comp_var2))) %>% 
+      drop_na()
+    
+    # Validación de seguridad por si el cruce se queda sin renglones válidos
+    if (nrow(df_clean) < 10) {
+      return(list(
+        tipo = "error",
+        texto = "<p><i>No hay suficientes observaciones válidas cruzadas para calcular una prueba estadística.</i></p>",
+        plot = NULL
+      ))
+    }
+    
+    v1 <- df_clean[[input$comp_var1]]
+    v2 <- df_clean[[input$comp_var2]]
+    
+    # REGLA: Separación estricta entre Nominal vs Numérica (Continua/Ordinal)
+    es_nominal_v2 <- is.factor(v2) || is.character(v2)
+    
+      if (es_nominal_v2) {
+      # ================================================================
+      # ESCENARIO A: Categórica Nominal -> Prueba de Chi-Cuadrada
+      # ================================================================
+      tabla_contingencia <- table(v1, v2)
+      
+      # Se usa suppressWarnings porque R lanza una advertencia en consola automáticamente si expected < 5
+      prueba_chi <- tryCatch(suppressWarnings(chisq.test(tabla_contingencia)), error = function(e) NULL)
+      
+      if (is.null(prueba_chi)) {
+        texto_html <- "<p>Error matemático al calcular la distribución de Chi-cuadrada debido a frecuencias de celda en cero.</p>"
+      
+      } else if (any(prueba_chi$expected < 5)) {
+        # --- NUEVA CONDICIÓN: VALIDACIÓN DE SUPUESTOS ---
+        texto_html <- paste0(
+          "<p><b>Prueba Estadística Omitida (Violación de Supuestos):</b></p>",
+          "<p>El análisis de <b>Chi-cuadrada</b> requiere que las frecuencias <i>esperadas</i> en cada grupo de la tabla sean mayores o iguales a 5. ",
+          "Al cruzar estas variables, debido a que algunas categorías tienen muy pocos pacientes, este supuesto matemático <b>no se cumple</b>.</p>",
+          "<p><b>Interpretación:</b> Por rigor metodológico, el algoritmo ha cancelado el cálculo del valor <i>p</i> para prevenir conclusiones clínicas engañosas (falsos positivos o negativos). Sin embargo, puedes analizar visualmente las proporciones de la muestra en la gráfica inferior.</p>"
+        )
+        
+      } else {
+        # --- EJECUCIÓN NORMAL SI SE CUMPLEN LOS SUPUESTOS ---
+        p_val <- prueba_chi$p.value
+        significativo <- if (p_val < 0.05) "SÍ existe" else "NO existe"
+        
+        texto_html <- paste0(
+          "<p><b>Prueba Estadística Ejecutada:</b> Prueba de Independencia Chi-cuadrada de Pearson.</p>",
+          "<p><b>Muestra Analizada:</b> n = ", nrow(df_clean), " pacientes con datos completos.</p>",
+          "<p><b>Resultado del Modelo:</b> Estadístico &chi;<sup>2</sup> = ", round(prueba_chi$statistic, 3), 
+          ", Grados de Libertad = ", prueba_chi$parameter, 
+          ", p-valor = <b>", format.pval(p_val, digits = 4), "</b>.</p>",
+          "<p><b>Interpretación:</b> Tomando un nivel de confianza estándar del 95%, se concluye que <b>", significativo, "</b> una asociación estadísticamente significativa entre las variables seleccionadas. ",
+          ifelse(p_val < 0.05, 
+                 "Esto indica que pertenecer a un grupo específico altera notablemente las proporciones de la otra variable.", 
+                 "Esto sugiere que la distribución observada se mantiene proporcionalmente estable e independiente entre los grupos analizados."), "</p>"
+        )
+      }
+      
+      # Gráfico de barras contiguas (agrupadas) con paleta Viridis y conteo n
+      p_grafico <- ggplot(df_clean, aes(x = factor(!!sym(input$comp_var1)), fill = factor(!!sym(input$comp_var2)))) +
+        geom_bar(
+          position = position_dodge(width = 0.7), 
+          color = "white", 
+          width = 0.6
+        ) +
+        geom_text(
+          stat = "count", 
+          aes(label = after_stat(count)), 
+          position = position_dodge(width = 0.7), 
+          vjust = -0.3, 
+          size = 4
+        ) +
+        labs(
+          y = "Frecuencia", 
+          x = etiqueta_humana_p1(input$comp_var1), 
+          fill = etiqueta_humana_p1(input$comp_var2),
+          caption = "Fuente: Registro Mexicano de Lupus, Martinez D, et al. medRxiv 2026; doi: 10.64898/2026.06.11.26355300"
+        ) +
+        scale_fill_viridis_d(option = "inferno", begin = 0.1, end = 0.9) +
+        theme_minimal(base_family = "sans") +
+        theme(
+          legend.position = "right", 
+          axis.text = element_text(size = 11), 
+          axis.title = element_text(size = 12),
+          plot.caption = element_text(size = 9, color = "gray50", face = "italic", margin = margin(t = 15))
+        )
+      
+      return(list(tipo = "chi", texto = texto_html, plot = p_grafico))
+      
+      
+    } else {
+      # ================================================================
+      # ESCENARIO B: Continua o Discreta Ordinal -> Permutaciones y Post-Hoc
+      # ================================================================
+      df_clean[[input$comp_var1]] <- factor(df_clean[[input$comp_var1]])
+      
+      # Validación extra de seguridad: ¿Hay al menos 2 grupos para comparar?
+      if (length(unique(df_clean[[input$comp_var1]])) < 2) {
+        return(list(
+          tipo = "error",
+          texto = "<p><i>No hay suficientes grupos distintos con datos válidos para realizar una comparación.</i></p>",
+          plot = NULL
+        ))
+      }
+      
+      formula_test <- as.formula(paste(input$comp_var2, "~", input$comp_var1))
+      
+      # 1. PRUEBA GLOBAL (Omnibus) de Permutaciones usando paquete 'coin' (999 iteraciones Monte Carlo)
+      global_test <- tryCatch({
+        coin::oneway_test(formula_test, data = df_clean, distribution = coin::approximate(nresample = 999))
+      }, error = function(e) NULL)
+      
+      if (is.null(global_test)) {
+        return(list(
+          tipo = "error",
+          texto = "<p>Imposible procesar el modelo de varianza permutacional. Verifique la dispersión de los datos continuos.</p>",
+          plot = NULL
+        ))
+      }
+      
+      p_val_global <- coin::pvalue(global_test)[1]
+      estadistico_global <- coin::statistic(global_test)[1]
+      
+      # Encabezado del reporte
+      texto_html <- paste0(
+        "<p><b>Prueba Estadística Ejecutada:</b> Prueba global de permutaciones (999 simulaciones de Monte Carlo mediante paquete <i>coin</i>), un método robusto que no asume normalidad.</p>",
+        "<p><b>Muestra Analizada:</b> n = ", nrow(df_clean), " registros.</p>"
+      )
+      
+      # 2. EVALUACIÓN Y ANÁLISIS POST HOC
+      if (p_val_global >= 0.05) {
+        # NO hay diferencias
+        texto_html <- paste0(
+          texto_html,
+          "<p><b>Interpretación:</b> Tras comparar a los grupos de la muestra, se concluye que <b>NO existen diferencias estadísticamente significativas</b> (p = ", format.pval(p_val_global, digits = 4), "). ",
+          "Las ligeras variaciones visuales en el gráfico inferior son producto del azar, confirmando que el comportamiento de esta variable es similar entre los grupos analizados.</p>"
+        )
+      } else {
+        # SÍ hay diferencias globales
+        texto_html <- paste0(
+          texto_html,
+          "<p><b>Resultado Global:</b> Se detectó que existe por lo menos una diferencia estadísticamente significativa entre los grupos evaluados (Estadístico = ", round(estadistico_global, 3), ", p = ", format.pval(p_val_global, digits = 4), ").</p>"
+        )
+        
+        grupos <- levels(df_clean[[input$comp_var1]])
+        
+        if (length(grupos) > 2) {
+          # 2.1 Post Hoc por pares
+          pares <- combn(grupos, 2, simplify = FALSE)
+          p_raw <- c()
+          nombres_pares <- c()
+          
+          # Bucle por cada par posible
+          for(par in pares) {
+            df_par <- df_clean %>% filter(!!sym(input$comp_var1) %in% par) %>% droplevels()
+            test_par <- coin::oneway_test(formula_test, data = df_par, distribution = coin::approximate(nresample = 999))
+            p_raw <- c(p_raw, coin::pvalue(test_par)[1])
+            nombres_pares <- c(nombres_pares, paste("<b>", par[1], "</b> vs <b>", par[2], "</b>"))
+          }
+          
+          # Corrección de múltiples comparaciones (FDR)
+          p_adj <- p.adjust(p_raw, method = "fdr")
+          sig_pares <- which(p_adj < 0.05)
+          
+          if (length(sig_pares) > 0) {
+            texto_html <- paste0(
+              texto_html,
+              "<p><b>Análisis Específico (Post hoc por pares corregido por FDR):</b> Al existir múltiples grupos, exploramos cada combinación posible con un filtro estricto para evitar falsos positivos. Descubrimos que las diferencias reales existen exclusivamente al comparar:</p><ul>"
+            )
+            for (idx in sig_pares) {
+              texto_html <- paste0(texto_html, "<li>", nombres_pares[idx], " (p ajustado = ", format.pval(p_adj[idx], digits = 4), ")</li>")
+            }
+            texto_html <- paste0(texto_html, "</ul><p>Cualquier otra comparativa entre los grupos restantes no mostró diferencias concluyentes.</p>")
+          } else {
+            texto_html <- paste0(
+              texto_html,
+              "<p><b>Análisis Específico:</b> Aunque la prueba global detectó una tendencia a la diferencia, al aplicar la corrección estricta de control de falsos positivos (FDR) en el análisis par a par, ninguna de las diferencias individuales logró mantenerse como estadísticamente significativa de manera aislada.</p>"
+            )
+          }
+        } else {
+          # 2.2 Solo hay 2 grupos
+          texto_html <- paste0(
+            texto_html,
+            "<p><b>Interpretación:</b> Al contar con solo dos grupos, la prueba confirma directamente que <b>SÍ existen diferencias reales</b> entre ellos. El gráfico inferior ilustra cómo sus distribuciones se separan o concentran en rangos distintos, respaldando esta evidencia matemática.</p>"
+          )
+        }
+      }
+      
+      # 3. LÓGICA DE VISUALIZACIÓN: Densidad vs Barras Ordinales
+      es_discreta_ordinal <- length(unique(na.omit(v2))) <= 12
+      
+      if (es_discreta_ordinal) {
+        # Gráfico de barras apiladas al 100% para visualizar el nivel de severidad ordinal
+        p_grafico <- ggplot(df_clean, aes(x = factor(!!sym(input$comp_var1)), fill = factor(!!sym(input$comp_var2)))) +
+          geom_bar(position = "fill", color = "white", width = 0.6) +
+          scale_y_continuous(labels = scales::percent) +
+          labs(
+            y = "Proporción Relativa", 
+            x = etiqueta_humana_p1(input$comp_var1), 
+            fill = paste("Nivel de:", etiqueta_humana_p1(input$comp_var2)),
+            caption = "Fuente: Registro Mexicano de Lupus, Martinez D, et al. medRxiv 2026; doi: 10.64898/2026.06.11.26355300"
+          ) +
+          scale_fill_viridis_d(option = "inferno", begin = 0.1, end = 0.9) +
+          theme_minimal(base_family = "sans") +
+          theme(legend.position = "right", axis.text = element_text(size = 11), axis.title = element_text(size = 12))
+      } else {
+        # Gráfico de densidad suave para continuas reales
+        p_grafico <- ggplot(df_clean, aes(x = !!sym(input$comp_var2), fill = factor(!!sym(input$comp_var1)))) +
+          geom_density(alpha = 0.5, color = NA) + 
+          labs(
+            y = "Densidad de Distribución", 
+            x = etiqueta_humana_p1(input$comp_var2), 
+            fill = etiqueta_humana_p1(input$comp_var1),
+            caption = "Fuente: Registro Mexicano de Lupus, Martinez D, et al. medRxiv 2026; doi: 10.64898/2026.06.11.26355300"
+          ) +
+          scale_fill_viridis_d(option = "viridis", begin = 0.1, end = 0.9) + 
+          theme_minimal(base_family = "sans") +
+          theme(legend.position = "right", axis.text = element_text(size = 11), axis.title = element_text(size = 12),
+           plot.caption = element_text(size = 9, color = "gray50", face = "italic", margin = margin(t = 15))     
+                )
+      }
+      
+      return(list(tipo = "perm", texto = texto_html, plot = p_grafico))
+    }
+  })
+  
+  # Renderizar la explicación en formato HTML dinámico
+  output$txt_comparativa <- renderUI({
+    HTML(analisis_comparativa()$texto)
+  })
+  
+  # Renderizar el gráfico interactivo/estático correspondiente
+  output$plot_comparativa <- renderPlot({
+    req(analisis_comparativa()$plot)
+    analisis_comparativa()$plot
+  })
+  
+  # Controlador para la descarga del reporte plano .txt
+  output$download_comp <- downloadHandler(
+    filename = function() {
+      paste("Analisis_Comparativo_Lupus_", Sys.Date(), ".txt", sep = "")
+    },
+    content = function(file) {
+      res <- analisis_comparativa()
+      
+      # Encabezado institucional plano
+      encabezado <- c(
+        "==================================================",
+        "REGISTRO MEXICANO DE LUPUS - MÓDULO COMPARATIVAS",
+        "Fuente: Registro Mexicano de Lupus",
+        paste("Fecha de emisión:", Sys.time()),
+        paste("Variable de Agrupación (Grupos):", input$comp_var1),
+        paste("Variable de Contraste Evaluada:", input$comp_var2),
+        "==================================================",
+        "CITA SUGERIDA:",
+  "Martínez D, Sánchez-Aguirre D, et al. Building accessible resources to empower communities: the case of the Lupus Mexican Registry. medRxiv 2026.06.11.26355300; doi: https://doi.org/10.64898/2026.06.11.26355300",
+  "==================================================",
+        ""
+      )
+      
+      # Eliminar etiquetas HTML para conservar el bloc de notas impecable
+      texto_limpio <- res$texto %>%
+        gsub(pattern = "<p>", replacement = "\n", .) %>%
+        gsub(pattern = "</p>", replacement = "\n", .) %>%
+        gsub(pattern = "<b>", replacement = "", .) %>%
+        gsub(pattern = "</b>", replacement = "", .) %>%
+        gsub(pattern = "<sup>", replacement = "^", .) %>%
+        gsub(pattern = "</sup>", replacement = "", .) %>%
+        gsub(pattern = "&chi;", replacement = "Chi", .)
+      
+      writeLines(c(encabezado, texto_limpio), file)
+    }
+  )
+  
+  # --- NUEVO: Controlador para la descarga del Gráfico de Alta Calidad ---
+  output$download_plot_comp <- downloadHandler(
+    filename = function() {
+      paste("Grafico_Comparativas_Lupus_", Sys.Date(), ".png", sep = "")
+    },
+    content = function(file) {
+      # Requerimos que el gráfico exista antes de intentar guardar
+      req(analisis_comparativa()$plot)
+      
+      # ggsave fuerza los 300 dpi. 
+      # bg = "white" es crucial porque theme_minimal a veces renderiza fondos transparentes
+      ggsave(
+        filename = file,
+        plot = analisis_comparativa()$plot,
+        device = "png",
+        width = 10,
+        height = 6,
+        dpi = 300,
+        bg = "white"
+      )
+    }
+  )
+  
+  # --- Lógica Pestaña 3: Modelado Estadístico ---
   
   modelo_general_reactivo <- eventReactive(input$run_model, {
     req(input$var_target, input$var_predict)
@@ -1803,15 +2357,20 @@ server <- function(input, output, session) {
         }
       }
       
+
       # 5. Generar reporte técnico crudo
-      raw_summary <- capture.output(summary(fit))
+      raw_summary <- traducir_summary_tecnico(capture.output(summary(fit)))
       header_tecnico <- c(
         "==================================================",
         "REPORTE TÉCNICO DE MODELADO ESTADÍSTICO GENERAL",
+        "Fuente: Registro Mexicano de Lupus",
         paste("Tipo de Modelo:", nombre_metodo),
         paste("Fecha de análisis:", Sys.time()),
         paste("Sujetos incluidos en la muestra (n):", n_sujetos),
         "==================================================",
+        "CITA SUGERIDA:",
+  "Martínez D, Sánchez-Aguirre D, et al. Building accessible resources to empower communities: the case of the Lupus Mexican Registry. medRxiv 2026.06.11.26355300; doi: https://doi.org/10.64898/2026.06.11.26355300",
+  "==================================================",
         ""
       )
       
@@ -1831,13 +2390,13 @@ server <- function(input, output, session) {
     modelo_general_reactivo()$texto_humano
   })
 
-  # Descargar output técnico de la Pestaña 2
+  # Descargar output técnico de la Pestaña 3
   output$download_modelo_summary <- downloadHandler(
     filename = function() { paste("Resumen_Modelo_General_", Sys.Date(), ".txt", sep = "") },
     content = function(file) { writeLines(modelo_general_reactivo()$texto_tecnico, file) }
   )
 
-  # --- Lógica Pestaña 3: Neurolupus ---
+  # --- Lógica Pestaña 4: Neurolupus ---
   
   modelo_neuro_reactivo <- eventReactive(input$run_neuro_model, {
     req(input$neuro_target, input$neuro_predictors)
@@ -1896,13 +2455,17 @@ server <- function(input, output, session) {
       if(!is_binary) reporte_lineas <- c(reporte_lineas, "", paste("AJUSTE: El modelo explica el", r_sq, "% de la variabilidad observada."))
       
       # 3. Preparar el Resumen Técnico con el N de la muestra
-      raw_summary <- capture.output(summary(fit))
+      raw_summary <- traducir_summary_tecnico(capture.output(summary(fit)))
       header_tecnico <- c(
         "==================================================",
         "REPORTE TÉCNICO DE NEUROLUPUS",
+        "Fuente: Registro Mexicano de Lupus",
         paste("Fecha de análisis:", Sys.time()),
         paste("Sujetos incluidos en la muestra (n):", n_sujetos),
         "==================================================",
+        "CITA SUGERIDA:",
+  "Martínez D, Sánchez-Aguirre D, et al. Building accessible resources to empower communities: the case of the Lupus Mexican Registry. medRxiv 2026.06.11.26355300; doi: https://doi.org/10.64898/2026.06.11.26355300",
+  "==================================================",
         ""
       )
       
@@ -1917,12 +2480,12 @@ server <- function(input, output, session) {
     })
   })
 
-  # Renderizar el texto en la pantalla de la app (Pestaña 3)
+  # Renderizar el texto en la pantalla de la app (Pestaña 4)
   output$txt_reporte_neuro_model <- renderText({
     modelo_neuro_reactivo()$texto_humano
   })
 
-  # Manejar la descarga del archivo técnico (Pestaña 3)
+  # Manejar la descarga del archivo técnico (Pestaña 4)
   output$download_neuro_summary <- downloadHandler(
     filename = function() {
       paste("Resumen_Estadistico_Neurolupus_", Sys.Date(), ".txt", sep = "")
