@@ -6,8 +6,8 @@ Lupus App 2.0 is an interactive R Shiny application designed to empower communit
 *Note: While this repository documentation is in English, all of the application's interface elements and user outputs are strictly presented in Spanish to serve its target demographic.*
 
 ## 👥 Authors
-* Grecia Sevilla.
 * Dris Sánchez.
+* Grecia Sevilla.
 * Anita Ledesma.
 * Fernanda Bravo.
 * Itzel Olivares.
