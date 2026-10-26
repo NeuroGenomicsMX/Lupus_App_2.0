@@ -45,3 +45,12 @@ If you wish to contribute to the Lupus App 2.0 codebase, please adhere to the fo
 ## 🔒 Data Access
 
 To protect the privacy of the participants, the raw data (`Lupus_App_dataset.csv`) is safeguarded. Communities and researchers wishing to access the database for collaborative analysis must complete the formal request form linked in Tab 4 of the application.
+
+
+## License
+
+This project is licensed under the MIT License — see [LICENSE.md](LICENSE.md) for details.
+
+## Medical and Clinical Disclaimer
+
+This software is intended for research and educational purposes only. See [DISCLAIMER.md](DISCLAIMER.md) for the full medical and clinical disclaimer.
